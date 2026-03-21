@@ -30,7 +30,7 @@ class BillsRepository {
 
   Future<int> createBill({
     required String name,
-    required double amount,
+    double? amount,
     required int dueDayOfMonth,
     String? category,
     String? notes,
@@ -39,7 +39,7 @@ class BillsRepository {
     return _db.into(_db.bills).insert(
           BillsCompanion.insert(
             name: name,
-            amount: amount,
+            amount: Value(amount),
             dueDayOfMonth: dueDayOfMonth,
             category: Value(category),
             notes: Value(notes),
@@ -52,7 +52,7 @@ class BillsRepository {
   Future<void> updateBill({
     required int id,
     required String name,
-    required double amount,
+    double? amount,
     required int dueDayOfMonth,
     String? category,
     String? notes,
@@ -85,5 +85,14 @@ class BillsRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  Future<void> deleteBill(int id) async {
+    await _db.transaction(() async {
+      await (_db.delete(_db.billInstances)
+            ..where((i) => i.billId.equals(id)))
+          .go();
+      await (_db.delete(_db.bills)..where((b) => b.id.equals(id))).go();
+    });
   }
 }

@@ -130,15 +130,18 @@ class _BillInfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    bill.amount.asCurrency,
-                    style: theme.textTheme.headlineMedium!.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.primary,
+                if (bill.amount != null)
+                  Expanded(
+                    child: Text(
+                      bill.amount!.asCurrency,
+                      style: theme.textTheme.headlineMedium!.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary,
+                      ),
                     ),
-                  ),
-                ),
+                  )
+                else
+                  const Spacer(),
                 if (bill.isArchived)
                   Chip(
                     label: const Text('Archived'),
@@ -280,6 +283,9 @@ class _InstanceRow extends StatelessWidget {
     final parts = <String>[];
     if (instance.paidAt != null) {
       parts.add(DateFormat.MMMd().format(instance.paidAt!));
+    }
+    if (instance.amountPaid != null) {
+      parts.add('\$${instance.amountPaid!.toStringAsFixed(2)}');
     }
     final method = PaymentMethod.fromString(instance.paymentMethod);
     if (method != null) parts.add(method.label);

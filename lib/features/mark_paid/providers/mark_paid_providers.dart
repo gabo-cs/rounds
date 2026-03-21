@@ -8,6 +8,7 @@ class MarkPaidState {
     required this.paidAt,
     this.paymentMethod,
     this.referenceNote = '',
+    this.amountPaid,
     this.isSubmitting = false,
     this.errorMessage,
   });
@@ -15,6 +16,7 @@ class MarkPaidState {
   final DateTime paidAt;
   final PaymentMethod? paymentMethod;
   final String referenceNote;
+  final double? amountPaid;
   final bool isSubmitting;
   final String? errorMessage;
 
@@ -23,6 +25,8 @@ class MarkPaidState {
     PaymentMethod? paymentMethod,
     bool clearPaymentMethod = false,
     String? referenceNote,
+    double? amountPaid,
+    bool clearAmountPaid = false,
     bool? isSubmitting,
     String? errorMessage,
     bool clearError = false,
@@ -32,6 +36,7 @@ class MarkPaidState {
         paymentMethod:
             clearPaymentMethod ? null : paymentMethod ?? this.paymentMethod,
         referenceNote: referenceNote ?? this.referenceNote,
+        amountPaid: clearAmountPaid ? null : amountPaid ?? this.amountPaid,
         isSubmitting: isSubmitting ?? this.isSubmitting,
         errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
       );
@@ -52,6 +57,10 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
   void setReferenceNote(String note) =>
       state = state.copyWith(referenceNote: note);
 
+  void setAmountPaid(double? amount) => state = amount == null
+      ? state.copyWith(clearAmountPaid: true)
+      : state.copyWith(amountPaid: amount);
+
   Future<bool> submit() async {
     state = state.copyWith(isSubmitting: true, clearError: true);
     try {
@@ -61,6 +70,7 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
         paymentMethod: state.paymentMethod,
         referenceNote:
             state.referenceNote.trim().isEmpty ? null : state.referenceNote.trim(),
+        amountPaid: state.amountPaid,
       );
       return true;
     } catch (e) {

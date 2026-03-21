@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:rounds/core/extensions/currency_extensions.dart';
 import 'package:rounds/core/utils/backup_service.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/history/providers/history_providers.dart';
@@ -114,8 +113,7 @@ class _MonthRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${summary.paidCount} of ${summary.totalCount} paid'
-                    ' · ${summary.totalDue.asCurrency} total',
+                    '${summary.paidCount} of ${summary.totalCount} bills paid',
                     style: theme.textTheme.bodySmall!.copyWith(
                       color: cs.onSurface.withValues(alpha: 0.6),
                     ),
@@ -127,25 +125,19 @@ class _MonthRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  summary.totalPaid.asCurrency,
-                  style: theme.textTheme.titleMedium!.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: allPaid ? cs.primary : cs.onSurface,
-                  ),
-                ),
-                if (!allPaid)
-                  Text(
-                    '${summary.pendingCount} pending',
-                    style: theme.textTheme.labelSmall!.copyWith(
-                      color: cs.error,
-                    ),
-                  )
-                else
+                if (allPaid)
                   Text(
                     'All paid',
                     style: theme.textTheme.labelSmall!.copyWith(
                       color: cs.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  Text(
+                    '${summary.pendingCount} pending',
+                    style: theme.textTheme.labelSmall!.copyWith(
+                      color: cs.error,
                     ),
                   ),
               ],

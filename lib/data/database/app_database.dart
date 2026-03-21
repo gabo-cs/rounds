@@ -13,7 +13,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -21,8 +21,31 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
         },
         onUpgrade: (m, from, to) async {
-          // Future migrations added here as:
-          // if (from < 2) { await m.addColumn(...); }
+          if (from < 2) {
+            await m.addColumn(billInstances, billInstances.amountPaid);
+          }
+          if (from < 3) {
+            // Remove NOT NULL constraint on bills.amount by recreating the table.
+            // SQLite does not support ALTER COLUMN, so we use the rename trick.
+            await customStatement('''
+              CREATE TABLE bills_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                amount REAL,
+                due_day_of_month INTEGER NOT NULL,
+                category TEXT,
+                notes TEXT,
+                is_archived INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+              )
+            ''');
+            await customStatement(
+                'INSERT INTO bills_new SELECT * FROM bills');
+            await customStatement('DROP TABLE bills');
+            await customStatement(
+                'ALTER TABLE bills_new RENAME TO bills');
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

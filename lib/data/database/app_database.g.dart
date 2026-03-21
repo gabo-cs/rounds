@@ -39,9 +39,9 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
   late final GeneratedColumn<double> amount = GeneratedColumn<double>(
     'amount',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.double,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _dueDayOfMonthMeta = const VerificationMeta(
     'dueDayOfMonth',
@@ -151,8 +151,6 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
         _amountMeta,
         amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
       );
-    } else if (isInserting) {
-      context.missing(_amountMeta);
     }
     if (data.containsKey('due_day_of_month')) {
       context.handle(
@@ -219,7 +217,7 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
       amount: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}amount'],
-      )!,
+      ),
       dueDayOfMonth: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}due_day_of_month'],
@@ -256,7 +254,7 @@ class $BillsTable extends Bills with TableInfo<$BillsTable, Bill> {
 class Bill extends DataClass implements Insertable<Bill> {
   final int id;
   final String name;
-  final double amount;
+  final double? amount;
   final int dueDayOfMonth;
   final String? category;
   final String? notes;
@@ -266,7 +264,7 @@ class Bill extends DataClass implements Insertable<Bill> {
   const Bill({
     required this.id,
     required this.name,
-    required this.amount,
+    this.amount,
     required this.dueDayOfMonth,
     this.category,
     this.notes,
@@ -279,7 +277,9 @@ class Bill extends DataClass implements Insertable<Bill> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
-    map['amount'] = Variable<double>(amount);
+    if (!nullToAbsent || amount != null) {
+      map['amount'] = Variable<double>(amount);
+    }
     map['due_day_of_month'] = Variable<int>(dueDayOfMonth);
     if (!nullToAbsent || category != null) {
       map['category'] = Variable<String>(category);
@@ -297,7 +297,9 @@ class Bill extends DataClass implements Insertable<Bill> {
     return BillsCompanion(
       id: Value(id),
       name: Value(name),
-      amount: Value(amount),
+      amount: amount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amount),
       dueDayOfMonth: Value(dueDayOfMonth),
       category: category == null && nullToAbsent
           ? const Value.absent()
@@ -319,7 +321,7 @@ class Bill extends DataClass implements Insertable<Bill> {
     return Bill(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      amount: serializer.fromJson<double>(json['amount']),
+      amount: serializer.fromJson<double?>(json['amount']),
       dueDayOfMonth: serializer.fromJson<int>(json['dueDayOfMonth']),
       category: serializer.fromJson<String?>(json['category']),
       notes: serializer.fromJson<String?>(json['notes']),
@@ -334,7 +336,7 @@ class Bill extends DataClass implements Insertable<Bill> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
-      'amount': serializer.toJson<double>(amount),
+      'amount': serializer.toJson<double?>(amount),
       'dueDayOfMonth': serializer.toJson<int>(dueDayOfMonth),
       'category': serializer.toJson<String?>(category),
       'notes': serializer.toJson<String?>(notes),
@@ -347,7 +349,7 @@ class Bill extends DataClass implements Insertable<Bill> {
   Bill copyWith({
     int? id,
     String? name,
-    double? amount,
+    Value<double?> amount = const Value.absent(),
     int? dueDayOfMonth,
     Value<String?> category = const Value.absent(),
     Value<String?> notes = const Value.absent(),
@@ -357,7 +359,7 @@ class Bill extends DataClass implements Insertable<Bill> {
   }) => Bill(
     id: id ?? this.id,
     name: name ?? this.name,
-    amount: amount ?? this.amount,
+    amount: amount.present ? amount.value : this.amount,
     dueDayOfMonth: dueDayOfMonth ?? this.dueDayOfMonth,
     category: category.present ? category.value : this.category,
     notes: notes.present ? notes.value : this.notes,
@@ -429,7 +431,7 @@ class Bill extends DataClass implements Insertable<Bill> {
 class BillsCompanion extends UpdateCompanion<Bill> {
   final Value<int> id;
   final Value<String> name;
-  final Value<double> amount;
+  final Value<double?> amount;
   final Value<int> dueDayOfMonth;
   final Value<String?> category;
   final Value<String?> notes;
@@ -450,7 +452,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   BillsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
-    required double amount,
+    this.amount = const Value.absent(),
     required int dueDayOfMonth,
     this.category = const Value.absent(),
     this.notes = const Value.absent(),
@@ -458,7 +460,6 @@ class BillsCompanion extends UpdateCompanion<Bill> {
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : name = Value(name),
-       amount = Value(amount),
        dueDayOfMonth = Value(dueDayOfMonth),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
@@ -489,7 +490,7 @@ class BillsCompanion extends UpdateCompanion<Bill> {
   BillsCompanion copyWith({
     Value<int>? id,
     Value<String>? name,
-    Value<double>? amount,
+    Value<double?>? amount,
     Value<int>? dueDayOfMonth,
     Value<String?>? category,
     Value<String?>? notes,
@@ -653,6 +654,17 @@ class $BillInstancesTable extends BillInstances
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _amountPaidMeta = const VerificationMeta(
+    'amountPaid',
+  );
+  @override
+  late final GeneratedColumn<double> amountPaid = GeneratedColumn<double>(
+    'amount_paid',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -685,6 +697,7 @@ class $BillInstancesTable extends BillInstances
     paidAt,
     paymentMethod,
     referenceNote,
+    amountPaid,
     createdAt,
     updatedAt,
   ];
@@ -757,6 +770,12 @@ class $BillInstancesTable extends BillInstances
         ),
       );
     }
+    if (data.containsKey('amount_paid')) {
+      context.handle(
+        _amountPaidMeta,
+        amountPaid.isAcceptableOrUnknown(data['amount_paid']!, _amountPaidMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -818,6 +837,10 @@ class $BillInstancesTable extends BillInstances
         DriftSqlType.string,
         data['${effectivePrefix}reference_note'],
       ),
+      amountPaid: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount_paid'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -844,6 +867,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
   final DateTime? paidAt;
   final String? paymentMethod;
   final String? referenceNote;
+  final double? amountPaid;
   final DateTime createdAt;
   final DateTime updatedAt;
   const BillInstance({
@@ -855,6 +879,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
     this.paidAt,
     this.paymentMethod,
     this.referenceNote,
+    this.amountPaid,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -874,6 +899,9 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
     }
     if (!nullToAbsent || referenceNote != null) {
       map['reference_note'] = Variable<String>(referenceNote);
+    }
+    if (!nullToAbsent || amountPaid != null) {
+      map['amount_paid'] = Variable<double>(amountPaid);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -896,6 +924,9 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
       referenceNote: referenceNote == null && nullToAbsent
           ? const Value.absent()
           : Value(referenceNote),
+      amountPaid: amountPaid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amountPaid),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -915,6 +946,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
       paidAt: serializer.fromJson<DateTime?>(json['paidAt']),
       paymentMethod: serializer.fromJson<String?>(json['paymentMethod']),
       referenceNote: serializer.fromJson<String?>(json['referenceNote']),
+      amountPaid: serializer.fromJson<double?>(json['amountPaid']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -931,6 +963,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
       'paidAt': serializer.toJson<DateTime?>(paidAt),
       'paymentMethod': serializer.toJson<String?>(paymentMethod),
       'referenceNote': serializer.toJson<String?>(referenceNote),
+      'amountPaid': serializer.toJson<double?>(amountPaid),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -945,6 +978,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
     Value<DateTime?> paidAt = const Value.absent(),
     Value<String?> paymentMethod = const Value.absent(),
     Value<String?> referenceNote = const Value.absent(),
+    Value<double?> amountPaid = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => BillInstance(
@@ -960,6 +994,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
     referenceNote: referenceNote.present
         ? referenceNote.value
         : this.referenceNote,
+    amountPaid: amountPaid.present ? amountPaid.value : this.amountPaid,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -977,6 +1012,9 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
       referenceNote: data.referenceNote.present
           ? data.referenceNote.value
           : this.referenceNote,
+      amountPaid: data.amountPaid.present
+          ? data.amountPaid.value
+          : this.amountPaid,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -993,6 +1031,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
           ..write('paidAt: $paidAt, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('referenceNote: $referenceNote, ')
+          ..write('amountPaid: $amountPaid, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1009,6 +1048,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
     paidAt,
     paymentMethod,
     referenceNote,
+    amountPaid,
     createdAt,
     updatedAt,
   );
@@ -1024,6 +1064,7 @@ class BillInstance extends DataClass implements Insertable<BillInstance> {
           other.paidAt == this.paidAt &&
           other.paymentMethod == this.paymentMethod &&
           other.referenceNote == this.referenceNote &&
+          other.amountPaid == this.amountPaid &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1037,6 +1078,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
   final Value<DateTime?> paidAt;
   final Value<String?> paymentMethod;
   final Value<String?> referenceNote;
+  final Value<double?> amountPaid;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const BillInstancesCompanion({
@@ -1048,6 +1090,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
     this.paidAt = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     this.referenceNote = const Value.absent(),
+    this.amountPaid = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1060,6 +1103,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
     this.paidAt = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     this.referenceNote = const Value.absent(),
+    this.amountPaid = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : billId = Value(billId),
@@ -1076,6 +1120,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
     Expression<DateTime>? paidAt,
     Expression<String>? paymentMethod,
     Expression<String>? referenceNote,
+    Expression<double>? amountPaid,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1088,6 +1133,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
       if (paidAt != null) 'paid_at': paidAt,
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (referenceNote != null) 'reference_note': referenceNote,
+      if (amountPaid != null) 'amount_paid': amountPaid,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1102,6 +1148,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
     Value<DateTime?>? paidAt,
     Value<String?>? paymentMethod,
     Value<String?>? referenceNote,
+    Value<double?>? amountPaid,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1114,6 +1161,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
       paidAt: paidAt ?? this.paidAt,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       referenceNote: referenceNote ?? this.referenceNote,
+      amountPaid: amountPaid ?? this.amountPaid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1146,6 +1194,9 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
     if (referenceNote.present) {
       map['reference_note'] = Variable<String>(referenceNote.value);
     }
+    if (amountPaid.present) {
+      map['amount_paid'] = Variable<double>(amountPaid.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1166,6 +1217,7 @@ class BillInstancesCompanion extends UpdateCompanion<BillInstance> {
           ..write('paidAt: $paidAt, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('referenceNote: $referenceNote, ')
+          ..write('amountPaid: $amountPaid, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1189,7 +1241,7 @@ typedef $$BillsTableCreateCompanionBuilder =
     BillsCompanion Function({
       Value<int> id,
       required String name,
-      required double amount,
+      Value<double?> amount,
       required int dueDayOfMonth,
       Value<String?> category,
       Value<String?> notes,
@@ -1201,7 +1253,7 @@ typedef $$BillsTableUpdateCompanionBuilder =
     BillsCompanion Function({
       Value<int> id,
       Value<String> name,
-      Value<double> amount,
+      Value<double?> amount,
       Value<int> dueDayOfMonth,
       Value<String?> category,
       Value<String?> notes,
@@ -1463,7 +1515,7 @@ class $$BillsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<double> amount = const Value.absent(),
+                Value<double?> amount = const Value.absent(),
                 Value<int> dueDayOfMonth = const Value.absent(),
                 Value<String?> category = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -1485,7 +1537,7 @@ class $$BillsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
-                required double amount,
+                Value<double?> amount = const Value.absent(),
                 required int dueDayOfMonth,
                 Value<String?> category = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
@@ -1564,6 +1616,7 @@ typedef $$BillInstancesTableCreateCompanionBuilder =
       Value<DateTime?> paidAt,
       Value<String?> paymentMethod,
       Value<String?> referenceNote,
+      Value<double?> amountPaid,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -1577,6 +1630,7 @@ typedef $$BillInstancesTableUpdateCompanionBuilder =
       Value<DateTime?> paidAt,
       Value<String?> paymentMethod,
       Value<String?> referenceNote,
+      Value<double?> amountPaid,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -1649,6 +1703,11 @@ class $$BillInstancesTableFilterComposer
 
   ColumnFilters<String> get referenceNote => $composableBuilder(
     column: $table.referenceNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1730,6 +1789,11 @@ class $$BillInstancesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1795,6 +1859,11 @@ class $$BillInstancesTableAnnotationComposer
 
   GeneratedColumn<String> get referenceNote => $composableBuilder(
     column: $table.referenceNote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
     builder: (column) => column,
   );
 
@@ -1864,6 +1933,7 @@ class $$BillInstancesTableTableManager
                 Value<DateTime?> paidAt = const Value.absent(),
                 Value<String?> paymentMethod = const Value.absent(),
                 Value<String?> referenceNote = const Value.absent(),
+                Value<double?> amountPaid = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => BillInstancesCompanion(
@@ -1875,6 +1945,7 @@ class $$BillInstancesTableTableManager
                 paidAt: paidAt,
                 paymentMethod: paymentMethod,
                 referenceNote: referenceNote,
+                amountPaid: amountPaid,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -1888,6 +1959,7 @@ class $$BillInstancesTableTableManager
                 Value<DateTime?> paidAt = const Value.absent(),
                 Value<String?> paymentMethod = const Value.absent(),
                 Value<String?> referenceNote = const Value.absent(),
+                Value<double?> amountPaid = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => BillInstancesCompanion.insert(
@@ -1899,6 +1971,7 @@ class $$BillInstancesTableTableManager
                 paidAt: paidAt,
                 paymentMethod: paymentMethod,
                 referenceNote: referenceNote,
+                amountPaid: amountPaid,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

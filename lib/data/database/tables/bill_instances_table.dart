@@ -13,6 +13,7 @@ class BillInstances extends Table {
   DateTimeColumn get paidAt => dateTime().nullable()();
   TextColumn get paymentMethod => text().nullable()();
   TextColumn get referenceNote => text().nullable()();
+  RealColumn get amountPaid => real().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

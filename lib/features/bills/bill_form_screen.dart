@@ -41,7 +41,8 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   void _populateFromBill(Bill bill) {
     _nameController.text = bill.name;
-    _amountController.text = bill.amount.toStringAsFixed(2);
+    _amountController.text =
+        bill.amount != null ? bill.amount!.toStringAsFixed(2) : '';
     _notesController.text = bill.notes ?? '';
     _dueDayOfMonth = bill.dueDayOfMonth;
 
@@ -62,7 +63,10 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     setState(() => _isSaving = true);
 
     final name = _nameController.text.trim();
-    final amount = double.parse(_amountController.text.replaceAll(',', '.'));
+    final rawAmount = _amountController.text.trim();
+    final amount = rawAmount.isEmpty
+        ? null
+        : double.tryParse(rawAmount.replaceAll(',', '.'));
     final notes =
         _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
     String? category;
@@ -142,6 +146,36 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     if (confirmed == true && mounted) {
       await ref.read(billsRepositoryProvider).archiveBill(bill.id);
       if (mounted) context.pop();
+    }
+  }
+
+  Future<void> _delete(Bill bill) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete bill?'),
+        content: Text(
+          'Permanently delete "${bill.name}" and all its payment history? '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await ref.read(billsRepositoryProvider).deleteBill(bill.id);
+      if (mounted) context.go('/');
     }
   }
 
@@ -236,13 +270,13 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
               },
             ),
             const SizedBox(height: 16),
-            _SectionLabel(label: 'Amount'),
+            _SectionLabel(label: 'Amount (optional)'),
             const SizedBox(height: 6),
             TextFormField(
               controller: _amountController,
               decoration: const InputDecoration(
                 prefixText: '\$ ',
-                hintText: '0.00',
+                hintText: 'Leave blank if it varies',
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -250,9 +284,8 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                 FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
               ],
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Amount is required';
-                final parsed =
-                    double.tryParse(v.replaceAll(',', '.'));
+                if (v == null || v.trim().isEmpty) return null;
+                final parsed = double.tryParse(v.replaceAll(',', '.'));
                 if (parsed == null || parsed <= 0) {
                   return 'Enter a valid amount greater than 0';
                 }
@@ -301,6 +334,17 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                     )
                   : Text(_isEditing ? 'Save Changes' : 'Add Bill'),
             ),
+            if (_isEditing && existingBill != null) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed:
+                    _isSaving ? null : () => _delete(existingBill),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Delete Bill'),
+              ),
+            ],
           ],
         ),
       ),

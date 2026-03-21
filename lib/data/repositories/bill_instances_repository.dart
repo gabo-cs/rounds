@@ -8,20 +8,15 @@ class MonthSummary {
   const MonthSummary({
     required this.year,
     required this.month,
-    required this.totalDue,
-    required this.totalPaid,
     required this.pendingCount,
     required this.totalCount,
   });
 
   final int year;
   final int month;
-  final double totalDue;
-  final double totalPaid;
   final int pendingCount;
   final int totalCount;
 
-  double get remaining => totalDue - totalPaid;
   int get paidCount => totalCount - pendingCount;
 }
 
@@ -84,6 +79,7 @@ class BillInstancesRepository {
         );
   }
 
+  /// Only returns months where at least one bill has been marked as paid.
   Stream<List<MonthSummary>> watchAllMonthSummaries() {
     final query = _db.select(_db.billInstances).join([
       innerJoin(
@@ -97,17 +93,17 @@ class BillInstancesRepository {
 
       for (final row in rows) {
         final instance = row.readTable(_db.billInstances);
-        final bill = row.readTable(_db.bills);
         final key = (instance.year, instance.month);
         accumulators.putIfAbsent(
           key,
           () => _MonthAccumulator(instance.year, instance.month),
         );
-        accumulators[key]!.add(bill.amount, instance.isPaid);
+        accumulators[key]!.add(instance.isPaid);
       }
 
       final summaries = accumulators.values
           .map((a) => a.toSummary())
+          .where((s) => s.paidCount > 0) // only months with at least one payment
           .toList()
         ..sort((a, b) {
           final yearCmp = b.year.compareTo(a.year);
@@ -116,28 +112,6 @@ class BillInstancesRepository {
 
       return summaries;
     });
-  }
-
-  Future<MonthSummary?> getSummaryForMonth(int year, int month) async {
-    final rows = await ((_db.select(_db.billInstances).join([
-      innerJoin(
-        _db.bills,
-        _db.bills.id.equalsExp(_db.billInstances.billId),
-      ),
-    ])
-          ..where(_db.billInstances.year.equals(year) &
-              _db.billInstances.month.equals(month))))
-        .get();
-
-    if (rows.isEmpty) return null;
-
-    final acc = _MonthAccumulator(year, month);
-    for (final row in rows) {
-      final instance = row.readTable(_db.billInstances);
-      final bill = row.readTable(_db.bills);
-      acc.add(bill.amount, instance.isPaid);
-    }
-    return acc.toSummary();
   }
 
   Future<void> ensureInstancesExist(
@@ -179,6 +153,7 @@ class BillInstancesRepository {
     required DateTime paidAt,
     PaymentMethod? paymentMethod,
     String? referenceNote,
+    double? amountPaid,
   }) {
     return (_db.update(_db.billInstances)
           ..where((i) => i.id.equals(instanceId)))
@@ -188,6 +163,7 @@ class BillInstancesRepository {
         paidAt: Value(paidAt),
         paymentMethod: Value(paymentMethod?.name),
         referenceNote: Value(referenceNote),
+        amountPaid: Value(amountPaid),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -202,6 +178,7 @@ class BillInstancesRepository {
         paidAt: const Value(null),
         paymentMethod: const Value(null),
         referenceNote: const Value(null),
+        amountPaid: const Value(null),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -241,26 +218,17 @@ class _MonthAccumulator {
 
   final int year;
   final int month;
-  double totalDue = 0;
-  double totalPaid = 0;
   int pendingCount = 0;
   int totalCount = 0;
 
-  void add(double amount, bool isPaid) {
-    totalDue += amount;
+  void add(bool isPaid) {
     totalCount++;
-    if (isPaid) {
-      totalPaid += amount;
-    } else {
-      pendingCount++;
-    }
+    if (!isPaid) pendingCount++;
   }
 
   MonthSummary toSummary() => MonthSummary(
         year: year,
         month: month,
-        totalDue: totalDue,
-        totalPaid: totalPaid,
         pendingCount: pendingCount,
         totalCount: totalCount,
       );

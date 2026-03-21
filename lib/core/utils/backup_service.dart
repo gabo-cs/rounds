@@ -84,7 +84,7 @@ class BackupService {
   Map<String, dynamic> _billToJson(Bill b) => {
         'id': b.id,
         'name': b.name,
-        'amount': b.amount,
+        'amount': b.amount, // nullable
         'dueDayOfMonth': b.dueDayOfMonth,
         'category': b.category,
         'notes': b.notes,
@@ -96,7 +96,7 @@ class BackupService {
   BillsCompanion _billFromJson(Map<String, dynamic> m) => BillsCompanion(
         id: Value(m['id'] as int),
         name: Value(m['name'] as String),
-        amount: Value((m['amount'] as num).toDouble()),
+        amount: Value((m['amount'] as num?)?.toDouble()),
         dueDayOfMonth: Value(m['dueDayOfMonth'] as int),
         category: Value(m['category'] as String?),
         notes: Value(m['notes'] as String?),
@@ -113,6 +113,7 @@ class BackupService {
         'isPaid': i.isPaid,
         'paidAt': i.paidAt?.toUtc().toIso8601String(),
         'paymentMethod': i.paymentMethod,
+        'amountPaid': i.amountPaid,
         'referenceNote': i.referenceNote,
         'createdAt': i.createdAt.toUtc().toIso8601String(),
         'updatedAt': i.updatedAt.toUtc().toIso8601String(),
@@ -129,6 +130,7 @@ class BackupService {
           m['paidAt'] != null ? DateTime.parse(m['paidAt'] as String) : null,
         ),
         paymentMethod: Value(m['paymentMethod'] as String?),
+        amountPaid: Value((m['amountPaid'] as num?)?.toDouble()),
         referenceNote: Value(m['referenceNote'] as String?),
         createdAt: Value(DateTime.parse(m['createdAt'] as String)),
         updatedAt: Value(DateTime.parse(m['updatedAt'] as String)),

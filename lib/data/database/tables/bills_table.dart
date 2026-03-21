@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 class Bills extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 120)();
-  RealColumn get amount => real()();
+  RealColumn get amount => real().nullable()();
   IntColumn get dueDayOfMonth => integer()();
   TextColumn get category => text().nullable()();
   TextColumn get notes => text().nullable()();

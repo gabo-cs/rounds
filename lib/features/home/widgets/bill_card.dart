@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:rounds/core/extensions/currency_extensions.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 
@@ -19,7 +18,6 @@ class BillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
     final isPaid = entry.instance.isPaid;
 
     return Opacity(
@@ -53,19 +51,41 @@ class BillCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  entry.bill.amount.asCurrency,
-                  style: theme.textTheme.titleMedium!.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isPaid
-                        ? cs.onSurface.withValues(alpha: 0.5)
-                        : cs.onSurface,
-                  ),
-                ),
+                _AmountLabel(entry: entry, isPaid: isPaid),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AmountLabel extends StatelessWidget {
+  const _AmountLabel({required this.entry, required this.isPaid});
+
+  final BillInstanceWithBill entry;
+  final bool isPaid;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // For paid instances, prefer amountPaid over bill.amount
+    final displayAmount = isPaid
+        ? (entry.instance.amountPaid ?? entry.bill.amount)
+        : entry.bill.amount;
+
+    if (displayAmount == null) return const SizedBox.shrink();
+
+    final cs = Theme.of(context).colorScheme;
+    return Text(
+      '\$${displayAmount.toStringAsFixed(displayAmount == displayAmount.truncateToDouble() ? 0 : 2)}',
+      style: theme.textTheme.titleMedium!.copyWith(
+        fontWeight: FontWeight.w700,
+        color: isPaid
+            ? cs.onSurface.withValues(alpha: 0.5)
+            : cs.onSurface,
       ),
     );
   }
@@ -80,8 +100,7 @@ class _StatusIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     if (isPaid) {
-      return Icon(Icons.check_circle_rounded,
-          color: cs.primary, size: 22);
+      return Icon(Icons.check_circle_rounded, color: cs.primary, size: 22);
     }
     return Icon(Icons.radio_button_unchecked_rounded,
         color: cs.outlineVariant, size: 22);
@@ -106,7 +125,7 @@ class _SubtitleRow extends StatelessWidget {
       if (paidAt != null) parts.add('Paid ${DateFormat.MMMd().format(paidAt)}');
       if (method != null) parts.add(method.label);
       return Text(
-        parts.join(' · '),
+        parts.isEmpty ? 'Paid' : parts.join(' · '),
         style: theme.textTheme.bodySmall!.copyWith(
           color: cs.onSurface.withValues(alpha: 0.55),
         ),
@@ -114,36 +133,15 @@ class _SubtitleRow extends StatelessWidget {
     }
 
     final dueDay = entry.bill.dueDayOfMonth;
-    final now = DateTime.now();
-    final dueDate = DateTime(
-      entry.instance.year,
-      entry.instance.month,
-      dueDay,
-    );
-    final daysUntil = dueDate.difference(now).inDays;
-
-    String dueLabel;
-    Color labelColor = cs.onSurface.withValues(alpha: 0.6);
-    if (daysUntil < 0) {
-      dueLabel = 'Overdue';
-      labelColor = Theme.of(context).colorScheme.error;
-    } else if (daysUntil == 0) {
-      dueLabel = 'Due today';
-      labelColor = Theme.of(context).colorScheme.error;
-    } else if (daysUntil <= 3) {
-      dueLabel = 'Due in $daysUntil day${daysUntil == 1 ? '' : 's'}';
-      labelColor = Theme.of(context).colorScheme.tertiary;
-    } else {
-      dueLabel = 'Due on the ${_ordinal(dueDay)}';
-    }
-
     final category = entry.bill.category;
 
     return Row(
       children: [
         Text(
-          dueLabel,
-          style: theme.textTheme.bodySmall!.copyWith(color: labelColor),
+          'Due on the ${_ordinal(dueDay)}',
+          style: theme.textTheme.bodySmall!.copyWith(
+            color: cs.onSurface.withValues(alpha: 0.6),
+          ),
         ),
         if (category != null) ...[
           Text(

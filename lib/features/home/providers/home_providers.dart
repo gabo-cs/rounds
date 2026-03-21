@@ -70,25 +70,14 @@ final monthSummaryProvider = Provider<MonthSummary?>((ref) {
   return instancesAsync.whenOrNull(
     data: (instances) {
       if (instances.isEmpty) return null;
-      double totalDue = 0;
-      double totalPaid = 0;
       int pendingCount = 0;
-
       for (final entry in instances) {
-        totalDue += entry.bill.amount;
-        if (entry.instance.isPaid) {
-          totalPaid += entry.bill.amount;
-        } else {
-          pendingCount++;
-        }
+        if (!entry.instance.isPaid) pendingCount++;
       }
-
       final selected = ref.watch(selectedMonthProvider);
       return MonthSummary(
         year: selected.year,
         month: selected.month,
-        totalDue: totalDue,
-        totalPaid: totalPaid,
         pendingCount: pendingCount,
         totalCount: instances.length,
       );

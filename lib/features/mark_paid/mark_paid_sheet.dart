@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:rounds/core/extensions/currency_extensions.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/mark_paid/providers/mark_paid_providers.dart';
@@ -17,6 +17,7 @@ class MarkPaidSheet extends ConsumerStatefulWidget {
 
 class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
   late final TextEditingController _noteController;
+  late final TextEditingController _amountController;
 
   @override
   void initState() {
@@ -25,16 +26,23 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
     _noteController = TextEditingController(
       text: instance.referenceNote ?? '',
     );
+    _amountController = TextEditingController(
+      text: instance.amountPaid != null
+          ? instance.amountPaid!.toStringAsFixed(2)
+          : '',
+    );
 
-    // If already paid, pre-populate the form state from the instance
     if (instance.isPaid) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final notifier =
-            ref.read(markPaidProvider(instance.id).notifier);
+        if (!mounted) return;
+        final notifier = ref.read(markPaidProvider(instance.id).notifier);
         if (instance.paidAt != null) notifier.setDate(instance.paidAt!);
-        final method = PaymentMethod.fromString(instance.paymentMethod);
-        notifier.setPaymentMethod(method);
+        notifier.setPaymentMethod(
+            PaymentMethod.fromString(instance.paymentMethod));
         notifier.setReferenceNote(instance.referenceNote ?? '');
+        if (instance.amountPaid != null) {
+          notifier.setAmountPaid(instance.amountPaid);
+        }
       });
     }
   }
@@ -42,6 +50,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
   @override
   void dispose() {
     _noteController.dispose();
+    _amountController.dispose();
     super.dispose();
   }
 
@@ -79,36 +88,22 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 ),
                 const SizedBox(height: 20),
 
-                // Bill name + amount header
-                Row(
+                // Bill name header
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            bill.name,
-                            style: theme.textTheme.titleLarge!
-                                .copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            instance.isPaid
-                                ? 'Update payment details'
-                                : 'Mark as paid',
-                            style: theme.textTheme.bodyMedium!.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     Text(
-                      bill.amount.asCurrency,
-                      style: theme.textTheme.headlineSmall!.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: cs.primary,
+                      bill.name,
+                      style: theme.textTheme.titleLarge!
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      instance.isPaid
+                          ? 'Update payment details'
+                          : 'Mark as paid',
+                      style: theme.textTheme.bodyMedium!.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ],
@@ -124,8 +119,29 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 ),
                 const SizedBox(height: 16),
 
+                // Amount paid (optional)
+                _FieldLabel(label: 'Amount paid (optional)'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _amountController,
+                  decoration: const InputDecoration(
+                    prefixText: '\$ ',
+                    hintText: 'Leave blank if not tracking amounts',
+                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
+                  ],
+                  onChanged: (v) {
+                    final parsed = double.tryParse(v.replaceAll(',', '.'));
+                    notifier.setAmountPaid(parsed);
+                  },
+                ),
+                const SizedBox(height: 16),
+
                 // Payment method
-                _FieldLabel(label: 'Payment method'),
+                _FieldLabel(label: 'Payment method (optional)'),
                 const SizedBox(height: 6),
                 _PaymentMethodSelector(
                   selected: state.paymentMethod,
@@ -181,7 +197,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                         ),
                 ),
 
-                // Undo button (only for already-paid instances)
+                // Undo button
                 if (instance.isPaid) ...[
                   const SizedBox(height: 8),
                   TextButton(
@@ -241,8 +257,10 @@ class _FieldLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.labelMedium!.copyWith(
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: 0.7),
           ),
     );
   }
@@ -268,12 +286,9 @@ class _DatePickerField extends StatelessWidget {
         if (picked != null) onChanged(picked);
       },
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outline,
-          ),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
           borderRadius: BorderRadius.circular(10),
           color: Theme.of(context).colorScheme.surfaceContainerLowest,
         ),

@@ -100,7 +100,7 @@ class NotificationService {
       await _plugin.zonedSchedule(
         notifId,
         '${entry.bill.name} due $dayLabel',
-        '\$${entry.bill.amount.toStringAsFixed(2)} due on the ${_ordinal(dueDay)}',
+        '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : 'Bill'} due on the ${_ordinal(dueDay)}',
         scheduledDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
