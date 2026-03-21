@@ -149,35 +149,6 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     }
   }
 
-  Future<void> _delete(Bill bill) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete bill?'),
-        content: Text(
-          'Permanently delete "${bill.name}" and all its payment history? '
-          'This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      await ref.read(billsRepositoryProvider).deleteBill(bill.id);
-      if (mounted) context.go('/');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -334,17 +305,6 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                     )
                   : Text(_isEditing ? 'Save Changes' : 'Add Bill'),
             ),
-            if (_isEditing && existingBill != null) ...[
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed:
-                    _isSaving ? null : () => _delete(existingBill),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                ),
-                child: const Text('Delete Bill'),
-              ),
-            ],
           ],
         ),
       ),

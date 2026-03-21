@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/features/bills/bill_detail_screen.dart';
 import 'package:rounds/features/bills/bill_form_screen.dart';
+import 'package:rounds/features/bills/bills_screen.dart';
 import 'package:rounds/features/history/history_screen.dart';
 import 'package:rounds/features/home/home_screen.dart';
 import 'package:rounds/features/settings/settings_screen.dart';
@@ -17,6 +18,14 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/',
               builder: (context, state) => const HomeScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/bills-tab',
+              builder: (context, state) => const BillsScreen(),
             ),
           ],
         ),
@@ -77,6 +86,11 @@ class _ScaffoldWithNav extends StatelessWidget {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
+            label: 'Bills',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
