@@ -103,7 +103,7 @@ class BillInstancesRepository {
 
       final summaries = accumulators.values
           .map((a) => a.toSummary())
-          .where((s) => s.paidCount > 0) // only months with at least one payment
+          .where((s) => s.paidCount > 0)
           .toList()
         ..sort((a, b) {
           final yearCmp = b.year.compareTo(a.year);

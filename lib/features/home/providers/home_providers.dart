@@ -52,13 +52,20 @@ final monthInstancesProvider =
   final instancesRepo = ref.watch(billInstancesRepositoryProvider);
   final billsRepo = ref.watch(billsRepositoryProvider);
 
-  // Ensure instances exist before streaming
-  final activeBills = await billsRepo.watchAllActiveBills().first;
-  await instancesRepo.ensureInstancesExist(
-    activeBills,
-    selected.year,
-    selected.month,
-  );
+  // Only auto-generate instances for the current month.
+  // Past months show only what was explicitly recorded (paid bills).
+  final now = DateTime.now();
+  final isCurrentMonth =
+      selected.year == now.year && selected.month == now.month;
+
+  if (isCurrentMonth) {
+    final activeBills = await billsRepo.watchAllActiveBills().first;
+    await instancesRepo.ensureInstancesExist(
+      activeBills,
+      selected.year,
+      selected.month,
+    );
+  }
 
   yield* instancesRepo.watchInstancesForMonth(selected.year, selected.month);
 });
