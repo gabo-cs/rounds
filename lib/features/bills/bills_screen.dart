@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class BillsScreen extends ConsumerWidget {
   const BillsScreen({super.key});
@@ -12,6 +13,7 @@ class BillsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final allBillsAsync = ref.watch(_allBillsProvider);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: SafeArea(
@@ -24,7 +26,7 @@ class BillsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bills',
+                    l10n.billsTitle,
                     style: theme.textTheme.headlineMedium!
                         .copyWith(fontWeight: FontWeight.w700),
                   ),
@@ -60,7 +62,7 @@ class BillsScreen extends ConsumerWidget {
                     children: [
                       if (active.isNotEmpty) ...[
                         _SectionHeader(
-                          label: 'Active',
+                          label: l10n.active,
                           count: active.length,
                         ),
                         const SizedBox(height: 14),
@@ -80,7 +82,7 @@ class BillsScreen extends ConsumerWidget {
                       if (archived.isNotEmpty) ...[
                         const SizedBox(height: 14),
                         _SectionHeader(
-                          label: 'Archived',
+                          label: l10n.archivedLabel,
                           count: archived.length,
                         ),
                         const SizedBox(height: 14),
@@ -117,26 +119,23 @@ class BillsScreen extends ConsumerWidget {
     WidgetRef ref,
     Bill bill,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete bill?'),
-        content: Text(
-          'Delete "${bill.name}" permanently?\n\n'
-          'This will also erase all payment history for this bill. '
-          'This cannot be undone.',
-        ),
+        title: Text(l10n.deleteBillDialogTitle),
+        content: Text(l10n.deleteBillDialogContent(bill.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Delete'),
+            child: Text(l10n.deleteBillButton),
           ),
         ],
       ),
@@ -161,6 +160,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -173,7 +173,7 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         Text(
-          '$count ${count == 1 ? 'item' : 'items'}',
+          l10n.itemsCount(count),
           style: theme.textTheme.bodySmall!.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
@@ -199,11 +199,12 @@ class _BillRow extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isArchived = bill.isArchived;
+    final l10n = AppLocalizations.of(context);
 
     final subtitle = [
-      'Due the ${_ordinal(bill.dueDayOfMonth)}',
-      if (bill.category != null) bill.category!,
-      if (isArchived) 'Archived',
+      l10n.dueThe(bill.dueDayOfMonth),
+      if (bill.category != null) l10n.translateCategory(bill.category!),
+      if (isArchived) l10n.archivedLabel,
     ].join(' · ');
 
     return Card(
@@ -237,7 +238,8 @@ class _BillRow extends StatelessWidget {
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall!.copyWith(
-                        color: cs.onSurface.withValues(alpha: isArchived ? 0.4 : 0.6),
+                        color: cs.onSurface
+                            .withValues(alpha: isArchived ? 0.4 : 0.6),
                       ),
                     ),
                   ],
@@ -257,13 +259,13 @@ class _BillRow extends StatelessWidget {
               ],
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Edit',
+                tooltip: l10n.edit,
                 iconSize: 18,
                 onPressed: onTap,
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: cs.error),
-                tooltip: 'Delete',
+                tooltip: l10n.delete,
                 iconSize: 18,
                 onPressed: onDelete,
               ),
@@ -272,16 +274,6 @@ class _BillRow extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _ordinal(int n) {
-    if (n >= 11 && n <= 13) return '${n}th';
-    return switch (n % 10) {
-      1 => '${n}st',
-      2 => '${n}nd',
-      3 => '${n}rd',
-      _ => '${n}th',
-    };
   }
 }
 
@@ -293,6 +285,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -305,10 +298,10 @@ class _EmptyState extends StatelessWidget {
               color: theme.colorScheme.outlineVariant,
             ),
             const SizedBox(height: 16),
-            Text('No bills yet', style: theme.textTheme.titleLarge),
+            Text(l10n.noBillsYet, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
-              'Add your recurring bills to start tracking.',
+              l10n.addFirstBillBillsSubtitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium!.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -318,7 +311,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add),
-              label: const Text('Add your first bill'),
+              label: Text(l10n.addFirstBill),
             ),
           ],
         ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 import 'package:rounds/routing/app_router.dart';
 
 class RoundsApp extends ConsumerWidget {
@@ -12,11 +14,22 @@ class RoundsApp extends ConsumerWidget {
     final themeMode = ref.watch(
       settingsProvider.select((s) => s.themeMode),
     );
+    final languageCode = ref.watch(
+      settingsProvider.select((s) => s.languageCode),
+    );
     return MaterialApp.router(
       title: 'Rounds',
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      locale: Locale(languageCode),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
     );

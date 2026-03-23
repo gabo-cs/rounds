@@ -6,6 +6,7 @@ import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/home/widgets/bill_card.dart';
 import 'package:rounds/features/home/widgets/month_navigator.dart';
 import 'package:rounds/features/mark_paid/mark_paid_sheet.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,6 +14,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final instancesAsync = ref.watch(monthInstancesProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: SafeArea(
@@ -24,7 +26,7 @@ class HomeScreen extends ConsumerWidget {
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
-                  child: Text('Error loading bills: $e'),
+                  child: Text(l10n.errorLoadingBills(e.toString())),
                 ),
                 data: (instances) {
                   if (instances.isEmpty) {
@@ -43,7 +45,7 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       if (pending.isNotEmpty) ...[
                         _SectionHeader(
-                          title: 'Pending',
+                          title: l10n.pending,
                           count: pending.length,
                         ),
                         const SizedBox(height: 14),
@@ -62,7 +64,7 @@ class HomeScreen extends ConsumerWidget {
                       if (paid.isNotEmpty) ...[
                         if (pending.isNotEmpty) const SizedBox(height: 20),
                         _SectionHeader(
-                          title: 'Paid',
+                          title: l10n.paid,
                           count: paid.length,
                         ),
                         const SizedBox(height: 14),
@@ -118,6 +120,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
@@ -132,7 +135,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           Text(
-            '$count ${count == 1 ? 'item' : 'items'}',
+            l10n.itemsCount(count),
             style: theme.textTheme.bodySmall!.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
@@ -151,6 +154,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -164,12 +168,12 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No bills yet',
+              l10n.noBillsYet,
               style: theme.textTheme.titleLarge,
             ),
             const SizedBox(height: 14),
             Text(
-              'Add your recurring bills to start tracking your monthly payments.',
+              l10n.addFirstBillHomeSubtitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium!.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -179,7 +183,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAddBill,
               icon: const Icon(Icons.add),
-              label: const Text('Add your first bill'),
+              label: Text(l10n.addFirstBill),
             ),
           ],
         ),

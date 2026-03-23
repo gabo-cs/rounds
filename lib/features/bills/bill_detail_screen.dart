@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:rounds/core/extensions/currency_extensions.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/mark_paid/mark_paid_sheet.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class BillDetailScreen extends ConsumerWidget {
   const BillDetailScreen({super.key, required this.billId});
@@ -18,6 +18,7 @@ class BillDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final billAsync = ref.watch(billDetailProvider(billId));
     final instancesAsync = ref.watch(billInstancesForBillProvider(billId));
+    final l10n = AppLocalizations.of(context);
 
     return billAsync.when(
       loading: () =>
@@ -25,8 +26,8 @@ class BillDetailScreen extends ConsumerWidget {
       error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
       data: (bill) {
         if (bill == null) {
-          return const Scaffold(
-              body: Center(child: Text('Bill not found')));
+          return Scaffold(
+              body: Center(child: Text(l10n.billNotFound)));
         }
 
         return Scaffold(
@@ -35,7 +36,7 @@ class BillDetailScreen extends ConsumerWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Edit bill',
+                tooltip: l10n.editBillTooltip,
                 onPressed: () =>
                     context.push('/bills/${bill.id}/edit'),
               ),
@@ -46,12 +47,12 @@ class BillDetailScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: _BillInfoCard(bill: bill),
               ),
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
-                    'Payment History',
-                    style: TextStyle(
+                    l10n.paymentHistoryTitle,
+                    style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -67,8 +68,8 @@ class BillDetailScreen extends ConsumerWidget {
                 ),
                 data: (instances) {
                   if (instances.isEmpty) {
-                    return const SliverFillRemaining(
-                      child: Center(child: Text('No payment history yet.')),
+                    return SliverFillRemaining(
+                      child: Center(child: Text(l10n.noPaymentHistoryYet)),
                     );
                   }
 
@@ -120,6 +121,7 @@ class _BillInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -144,7 +146,7 @@ class _BillInfoCard extends StatelessWidget {
                   const Spacer(),
                 if (bill.isArchived)
                   Chip(
-                    label: const Text('Archived'),
+                    label: Text(l10n.archivedChipLabel),
                     labelStyle: TextStyle(color: cs.onErrorContainer),
                     backgroundColor: cs.errorContainer,
                     visualDensity: VisualDensity.compact,
@@ -154,13 +156,13 @@ class _BillInfoCard extends StatelessWidget {
             const SizedBox(height: 8),
             _InfoRow(
               icon: Icons.calendar_today_outlined,
-              label: 'Due on the ${_ordinal(bill.dueDayOfMonth)} of each month',
+              label: l10n.dueOnDayEachMonth(bill.dueDayOfMonth),
             ),
             if (bill.category != null) ...[
               const SizedBox(height: 4),
               _InfoRow(
                 icon: Icons.label_outline,
-                label: bill.category!,
+                label: l10n.translateCategory(bill.category!),
               ),
             ],
             if (bill.notes != null && bill.notes!.isNotEmpty) ...[
@@ -174,16 +176,6 @@ class _BillInfoCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _ordinal(int n) {
-    if (n >= 11 && n <= 13) return '${n}th';
-    return switch (n % 10) {
-      1 => '${n}st',
-      2 => '${n}nd',
-      3 => '${n}rd',
-      _ => '${n}th',
-    };
   }
 }
 
@@ -223,12 +215,11 @@ class _InstanceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
     final instance = entry.instance;
     final isPaid = instance.isPaid;
 
-    final monthLabel = DateFormat.yMMMM().format(
-      DateTime(instance.year, instance.month),
-    );
+    final label = l10n.monthLabel(instance.year, instance.month);
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -255,7 +246,7 @@ class _InstanceRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    monthLabel,
+                    label,
                     style: theme.textTheme.bodyLarge!.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
@@ -263,7 +254,7 @@ class _InstanceRow extends StatelessWidget {
                   if (isPaid) ...[
                     const SizedBox(height: 2),
                     Text(
-                      _buildPaidSubtitle(instance),
+                      _buildPaidSubtitle(instance, l10n),
                       style: theme.textTheme.bodySmall!.copyWith(
                         color: cs.onSurface.withValues(alpha: 0.55),
                       ),
@@ -279,22 +270,33 @@ class _InstanceRow extends StatelessWidget {
     );
   }
 
-  String _buildPaidSubtitle(BillInstance instance) {
+  String _buildPaidSubtitle(BillInstance instance, AppLocalizations l10n) {
     final parts = <String>[];
     if (instance.paidAt != null) {
-      parts.add(DateFormat.MMMd().format(instance.paidAt!));
+      parts.add(l10n.formatShortDate(instance.paidAt!));
     }
     if (instance.amountPaid != null) {
       parts.add('\$${instance.amountPaid!.toStringAsFixed(2)}');
     }
     final method = PaymentMethod.fromString(instance.paymentMethod);
-    if (method != null) parts.add(method.label);
+    if (method != null) {
+      parts.add(_methodLabel(method, l10n));
+    }
     if (instance.referenceNote != null &&
         instance.referenceNote!.isNotEmpty) {
       parts.add(instance.referenceNote!);
     }
     return parts.join(' · ');
   }
+
+  String _methodLabel(PaymentMethod method, AppLocalizations l10n) =>
+      switch (method) {
+        PaymentMethod.cash => l10n.paymentCash,
+        PaymentMethod.bankTransfer => l10n.paymentBankTransfer,
+        PaymentMethod.card => l10n.paymentCard,
+        PaymentMethod.autoDebit => l10n.paymentAutoDebit,
+        PaymentMethod.other => l10n.paymentOther,
+      };
 }
 
 class _StatusChip extends StatelessWidget {
@@ -305,6 +307,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -314,7 +317,7 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        isPaid ? 'Paid' : 'Unpaid',
+        isPaid ? l10n.paid : l10n.unpaid,
         style: Theme.of(context).textTheme.labelSmall!.copyWith(
               color: isPaid ? cs.onPrimaryContainer : cs.onSurface,
               fontWeight: FontWeight.w600,

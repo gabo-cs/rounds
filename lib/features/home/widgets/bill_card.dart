@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class BillCard extends StatelessWidget {
   const BillCard({
@@ -21,6 +21,7 @@ class BillCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isPaid = entry.instance.isPaid;
     final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       child: InkWell(
@@ -58,7 +59,7 @@ class BillCard extends StatelessWidget {
                     ] else if (entry.bill.category != null) ...[
                       const SizedBox(height: 3),
                       Text(
-                        entry.bill.category!,
+                        l10n.translateCategory(entry.bill.category!),
                         style: theme.textTheme.bodySmall!.copyWith(
                           color: cs.onSurface.withValues(alpha: 0.5),
                         ),
@@ -89,24 +90,15 @@ class _DueDateLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Text(
-      'Due the ${_ordinal(dueDay)}',
+      l10n.dueThe(dueDay),
       textAlign: TextAlign.right,
       style: theme.textTheme.titleSmall!.copyWith(
         fontWeight: FontWeight.w600,
         color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
       ),
     );
-  }
-
-  String _ordinal(int n) {
-    if (n >= 11 && n <= 13) return '${n}th';
-    return switch (n % 10) {
-      1 => '${n}st',
-      2 => '${n}nd',
-      3 => '${n}rd',
-      _ => '${n}th',
-    };
   }
 }
 
@@ -141,17 +133,27 @@ class _PaidSubtitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final paidAt = entry.instance.paidAt;
     final method = PaymentMethod.fromString(entry.instance.paymentMethod);
     final parts = <String>[];
-    if (paidAt != null) parts.add('Paid ${DateFormat.MMMd().format(paidAt)}');
-    if (method != null) parts.add(method.label);
+    if (paidAt != null) parts.add(l10n.paidOnDate(paidAt));
+    if (method != null) parts.add(_methodLabel(method, l10n));
 
     return Text(
-      parts.isEmpty ? 'Paid' : parts.join(' · '),
+      parts.isEmpty ? l10n.paid : parts.join(' · '),
       style: Theme.of(context).textTheme.bodySmall!.copyWith(
             color: cs.onSurface.withValues(alpha: 0.5),
           ),
     );
   }
+
+  String _methodLabel(PaymentMethod method, AppLocalizations l10n) =>
+      switch (method) {
+        PaymentMethod.cash => l10n.paymentCash,
+        PaymentMethod.bankTransfer => l10n.paymentBankTransfer,
+        PaymentMethod.card => l10n.paymentCard,
+        PaymentMethod.autoDebit => l10n.paymentAutoDebit,
+        PaymentMethod.other => l10n.paymentOther,
+      };
 }

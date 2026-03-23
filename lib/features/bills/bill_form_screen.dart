@@ -6,6 +6,7 @@ import 'package:rounds/core/constants/app_constants.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class BillFormScreen extends ConsumerStatefulWidget {
   const BillFormScreen({super.key, this.billId});
@@ -110,8 +111,9 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
+          SnackBar(content: Text(l10n.failedToSave(e.toString()))),
         );
       }
     } finally {
@@ -120,25 +122,23 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   }
 
   Future<void> _archive(Bill bill) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Archive bill?'),
-        content: Text(
-          '"${bill.name}" will no longer appear in future months. '
-          'Payment history is preserved.',
-        ),
+        title: Text(l10n.archiveBillDialogTitle),
+        content: Text(l10n.archiveBillDialogContent(bill.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Archive'),
+            child: Text(l10n.archiveButton),
           ),
         ],
       ),
@@ -148,7 +148,6 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       if (mounted) context.pop();
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -161,8 +160,9 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
             Scaffold(body: Center(child: Text('Error: $e'))),
         data: (bill) {
           if (bill == null) {
-            return const Scaffold(
-                body: Center(child: Text('Bill not found')));
+            final l10n = AppLocalizations.of(context);
+            return Scaffold(
+                body: Center(child: Text(l10n.billNotFound)));
           }
           // Populate once
           if (_nameController.text.isEmpty) {
@@ -179,18 +179,19 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   Widget _buildForm(Bill? existingBill) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isArchived = existingBill?.isArchived ?? false;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Bill' : 'New Bill'),
+        title: Text(_isEditing ? l10n.editBillTitle : l10n.newBillTitle),
         actions: [
           if (_isEditing && existingBill != null)
             IconButton(
               icon: Icon(
                 isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
               ),
-              tooltip: isArchived ? 'Unarchive' : 'Archive',
+              tooltip: isArchived ? l10n.unarchive : l10n.archive,
               onPressed: () => isArchived
                   ? ref
                       .read(billsRepositoryProvider)
@@ -218,7 +219,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                         color: theme.colorScheme.onErrorContainer, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      'This bill is archived',
+                      l10n.thisArchivedBanner,
                       style: theme.textTheme.bodyMedium!.copyWith(
                         color: theme.colorScheme.onErrorContainer,
                       ),
@@ -226,28 +227,28 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                   ],
                 ),
               ),
-            _SectionLabel(label: 'Bill name'),
+            _SectionLabel(label: l10n.billNameLabel),
             const SizedBox(height: 6),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: 'e.g. Internet, Rent, Netflix',
+              decoration: InputDecoration(
+                hintText: l10n.billNameHint,
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Name is required';
-                if (v.trim().length > 120) return 'Name is too long';
+                if (v == null || v.trim().isEmpty) return l10n.billNameRequired;
+                if (v.trim().length > 120) return l10n.billNameTooLong;
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            _SectionLabel(label: 'Amount (optional)'),
+            _SectionLabel(label: l10n.amountLabel),
             const SizedBox(height: 6),
             TextFormField(
               controller: _amountController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixText: '\$ ',
-                hintText: 'Leave blank if it varies',
+                hintText: l10n.amountHint,
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -258,20 +259,20 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                 if (v == null || v.trim().isEmpty) return null;
                 final parsed = double.tryParse(v.replaceAll(',', '.'));
                 if (parsed == null || parsed <= 0) {
-                  return 'Enter a valid amount greater than 0';
+                  return l10n.amountInvalid;
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            _SectionLabel(label: 'Due day of month'),
+            _SectionLabel(label: l10n.dueDayLabel),
             const SizedBox(height: 6),
             _DueDayPicker(
               value: _dueDayOfMonth,
               onChanged: (day) => setState(() => _dueDayOfMonth = day),
             ),
             const SizedBox(height: 16),
-            _SectionLabel(label: 'Category (optional)'),
+            _SectionLabel(label: l10n.categoryLabel),
             const SizedBox(height: 6),
             _CategoryPicker(
               selected: _isCustomCategory ? null : _selectedCategory,
@@ -283,12 +284,12 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
               }),
             ),
             const SizedBox(height: 16),
-            _SectionLabel(label: 'Notes (optional)'),
+            _SectionLabel(label: l10n.notesLabel),
             const SizedBox(height: 6),
             TextFormField(
               controller: _notesController,
-              decoration: const InputDecoration(
-                hintText: 'Any additional details about this bill',
+              decoration: InputDecoration(
+                hintText: l10n.notesHint,
               ),
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
@@ -303,7 +304,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Text(_isEditing ? 'Save Changes' : 'Add Bill'),
+                  : Text(_isEditing ? l10n.saveChangesButton : l10n.addBillButton),
             ),
           ],
         ),
@@ -339,6 +340,7 @@ class _DueDayPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return DropdownButtonFormField<int>(
       initialValue: value,
       decoration: const InputDecoration(),
@@ -346,24 +348,13 @@ class _DueDayPicker extends StatelessWidget {
         AppConstants.maxDueDay,
         (i) => DropdownMenuItem(
           value: i + 1,
-          child: Text(_ordinal(i + 1)),
+          child: Text(l10n.dueDayOption(i + 1)),
         ),
       ),
       onChanged: (v) {
         if (v != null) onChanged(v);
       },
     );
-  }
-
-  String _ordinal(int n) {
-    if (n >= 11 && n <= 13) return '${n}th of the month';
-    final suffix = switch (n % 10) {
-      1 => 'st',
-      2 => 'nd',
-      3 => 'rd',
-      _ => 'th',
-    };
-    return '$n$suffix of the month';
   }
 }
 
@@ -382,6 +373,7 @@ class _CategoryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -392,7 +384,7 @@ class _CategoryPicker extends StatelessWidget {
             ...AppConstants.categories.map((cat) {
               final isSelected = !isCustom && cat == selected;
               return FilterChip(
-                label: Text(cat),
+                label: Text(l10n.translateCategory(cat)),
                 selected: isSelected,
                 showCheckmark: false,
                 onSelected: (val) =>
@@ -400,7 +392,7 @@ class _CategoryPicker extends StatelessWidget {
               );
             }),
             FilterChip(
-              label: const Text('Custom…'),
+              label: Text(l10n.customCategoryChip),
               selected: isCustom,
               showCheckmark: false,
               onSelected: (val) => onChanged(null, val),
@@ -411,10 +403,10 @@ class _CategoryPicker extends StatelessWidget {
           const SizedBox(height: 8),
           TextField(
             controller: customController,
-            decoration: const InputDecoration(
-              hintText: 'Enter custom category',
+            decoration: InputDecoration(
+              hintText: l10n.customCategoryHint,
               contentPadding:
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             textCapitalization: TextCapitalization.words,
           ),

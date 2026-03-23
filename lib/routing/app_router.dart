@@ -6,6 +6,7 @@ import 'package:rounds/features/bills/bills_screen.dart';
 import 'package:rounds/features/history/history_screen.dart';
 import 'package:rounds/features/home/home_screen.dart';
 import 'package:rounds/features/settings/settings_screen.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -96,15 +97,17 @@ class _BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
-  static const _items = [
-    (Icons.home_outlined, Icons.home, 'HOME'),
-    (Icons.receipt_long_outlined, Icons.receipt_long, 'BILLS'),
-    (Icons.history_outlined, Icons.history, 'HISTORY'),
-    (Icons.settings_outlined, Icons.settings, 'SETTINGS'),
+  static const _icons = [
+    (Icons.home_outlined, Icons.home),
+    (Icons.receipt_long_outlined, Icons.receipt_long),
+    (Icons.history_outlined, Icons.history),
+    (Icons.settings_outlined, Icons.settings),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final labels = [l10n.navHome, l10n.navBills, l10n.navHistory, l10n.navSettings];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     final bg = isDark ? const Color(0xFF0A1322) : Colors.white;
@@ -121,12 +124,12 @@ class _BottomNavBar extends StatelessWidget {
         height: 72,
         child: Row(
           children: [
-            for (int i = 0; i < _items.length; i++)
+            for (int i = 0; i < _icons.length; i++)
               Expanded(
                 child: _NavItem(
-                  outlinedIcon: _items[i].$1,
-                  filledIcon: _items[i].$2,
-                  label: _items[i].$3,
+                  outlinedIcon: _icons[i].$1,
+                  filledIcon: _icons[i].$2,
+                  label: labels[i],
                   isSelected: currentIndex == i,
                   indicatorColor: indicatorColor,
                   selectedColor: selectedColor,

@@ -4,6 +4,7 @@ import 'package:rounds/core/utils/backup_service.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -12,31 +13,32 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           // APPEARANCE
-          const _SectionLabel(label: 'Appearance'),
+          _SectionLabel(label: l10n.appearanceSection),
           _SettingsCard(
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: SegmentedButton<ThemeMode>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: ThemeMode.light,
-                      label: Text('Light'),
+                      label: Text(l10n.lightTheme),
                     ),
                     ButtonSegment(
                       value: ThemeMode.system,
-                      label: Text('System'),
+                      label: Text(l10n.systemTheme),
                     ),
                     ButtonSegment(
                       value: ThemeMode.dark,
-                      label: Text('Dark'),
+                      label: Text(l10n.darkTheme),
                     ),
                   ],
                   selected: {settings.themeMode},
@@ -52,14 +54,44 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
 
+          // LANGUAGE
+          _SectionLabel(label: l10n.languageSection),
+          _SettingsCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'en',
+                      label: Text(l10n.englishLanguage),
+                    ),
+                    ButtonSegment(
+                      value: 'es',
+                      label: Text(l10n.spanishLanguage),
+                    ),
+                  ],
+                  selected: {settings.languageCode},
+                  onSelectionChanged: (selected) {
+                    notifier.setLanguageCode(selected.first);
+                  },
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  expandedInsets: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+
           // NOTIFICATIONS
-          const _SectionLabel(label: 'Notifications'),
+          _SectionLabel(label: l10n.notificationsSection),
           _SettingsCard(
             children: [
               _SettingsTile(
                 icon: Icons.notifications_outlined,
-                title: 'Bill Reminders',
-                subtitle: 'Get notified 2 days and 1 day before each bill is due',
+                title: l10n.billRemindersTitle,
+                subtitle: l10n.billRemindersSubtitle,
                 trailing: Switch(
                   value: settings.notificationsEnabled,
                   onChanged: (enabled) async {
@@ -68,11 +100,8 @@ class SettingsScreen extends ConsumerWidget {
                           .requestPermission();
                       if (!granted && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Notification permission denied. '
-                              'Enable it in system settings.',
-                            ),
+                          SnackBar(
+                            content: Text(l10n.notificationDenied),
                           ),
                         );
                         return;
@@ -88,21 +117,21 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           // DATA
-          const _SectionLabel(label: 'Data'),
+          _SectionLabel(label: l10n.dataSection),
           _SettingsCard(
             children: [
               _SettingsTile(
                 icon: Icons.upload_outlined,
-                title: 'Export data',
-                subtitle: 'Save a JSON backup or share it',
+                title: l10n.exportDataTitle,
+                subtitle: l10n.exportDataSubtitle,
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _export(context, ref),
               ),
               const Divider(height: 1, indent: 64, endIndent: 0),
               _SettingsTile(
                 icon: Icons.download_outlined,
-                title: 'Import data',
-                subtitle: 'Restore from a JSON backup',
+                title: l10n.importDataTitle,
+                subtitle: l10n.importDataSubtitle,
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _import(context, ref),
               ),
@@ -110,13 +139,13 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           // ABOUT
-          const _SectionLabel(label: 'About'),
+          _SectionLabel(label: l10n.aboutSection),
           _SettingsCard(
             children: [
-              const _SettingsTile(
+              _SettingsTile(
                 icon: Icons.info_outline,
                 title: 'Rounds',
-                subtitle: 'Version 1.0.0',
+                subtitle: l10n.appVersionLabel,
               ),
             ],
           ),
@@ -126,6 +155,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     try {
       final service =
           BackupService(ref.read(billInstancesRepositoryProvider));
@@ -133,33 +163,30 @@ class SettingsScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
+          SnackBar(content: Text(l10n.exportFailed(e.toString()))),
         );
       }
     }
   }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
-    // Ask for confirmation before replacing data
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Import data?'),
-        content: const Text(
-          'This will replace ALL current data with the contents of the '
-          'backup file. This cannot be undone.',
-        ),
+        title: Text(l10n.importDataDialogTitle),
+        content: Text(l10n.importDataDialogContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Import & Replace'),
+            child: Text(l10n.importAndReplaceButton),
           ),
         ],
       ),
@@ -168,12 +195,9 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'To import, share your backup JSON file to Rounds from '
-          'your file manager or another app.',
-        ),
-        duration: Duration(seconds: 5),
+      SnackBar(
+        content: Text(l10n.importInstructions),
+        duration: const Duration(seconds: 5),
       ),
     );
   }

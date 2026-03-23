@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/mark_paid/providers/mark_paid_providers.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class MarkPaidSheet extends ConsumerStatefulWidget {
   const MarkPaidSheet({super.key, required this.entry});
@@ -62,6 +62,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
     final notifier = ref.read(markPaidProvider(instance.id).notifier);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -119,7 +120,9 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
 
                 // Subtitle
                 Text(
-                  instance.isPaid ? 'Update payment' : 'Mark as paid',
+                  instance.isPaid
+                      ? l10n.updatePaymentSubtitle
+                      : l10n.markAsPaidSubtitle,
                   style: theme.textTheme.bodyMedium!.copyWith(
                     color: cs.onSurface.withValues(alpha: 0.6),
                   ),
@@ -127,7 +130,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 const SizedBox(height: 24),
 
                 // Date paid
-                _FieldLabel(label: 'Date paid'),
+                _FieldLabel(label: l10n.datePaidLabel),
                 const SizedBox(height: 6),
                 _DatePickerField(
                   date: state.paidAt,
@@ -136,13 +139,13 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 const SizedBox(height: 16),
 
                 // Amount paid (optional)
-                _FieldLabel(label: 'Amount paid (optional)'),
+                _FieldLabel(label: l10n.amountPaidLabel),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _amountController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     prefixText: '\$ ',
-                    hintText: 'Leave blank if not tracking amounts',
+                    hintText: l10n.amountPaidHint,
                   ),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
@@ -157,7 +160,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 const SizedBox(height: 16),
 
                 // Payment method
-                _FieldLabel(label: 'Payment method (optional)'),
+                _FieldLabel(label: l10n.paymentMethodLabel),
                 const SizedBox(height: 6),
                 _PaymentMethodSelector(
                   selected: state.paymentMethod,
@@ -166,15 +169,15 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 const SizedBox(height: 16),
 
                 // Reference note
-                _FieldLabel(label: 'Reference / note (optional)'),
+                _FieldLabel(label: l10n.referenceLabel),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _noteController,
                   onChanged: notifier.setReferenceNote,
-                  decoration: const InputDecoration(
-                    hintText: 'Transaction ID, confirmation #, etc.',
+                  decoration: InputDecoration(
+                    hintText: l10n.referenceHint,
                     contentPadding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   maxLines: 2,
                   textCapitalization: TextCapitalization.sentences,
@@ -210,7 +213,9 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                         )
                       : const Icon(Icons.check_circle_outline),
                   label: Text(
-                    instance.isPaid ? 'Update Payment' : 'Confirm Payment',
+                    instance.isPaid
+                        ? l10n.updatePaymentButton
+                        : l10n.confirmPaymentButton,
                   ),
                 ),
 
@@ -229,7 +234,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                               }
                             }
                           },
-                    child: const Text('Undo Payment'),
+                    child: Text(l10n.undoPaymentButton),
                   ),
                 ],
               ],
@@ -241,21 +246,20 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
   }
 
   Future<bool> _confirmUndo(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Undo payment?'),
-        content: const Text(
-          'This will mark the bill as unpaid and remove payment details.',
-        ),
+        title: Text(l10n.undoPaymentDialogTitle),
+        content: Text(l10n.undoPaymentDialogContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Undo'),
+            child: Text(l10n.undo),
           ),
         ],
       ),
@@ -292,6 +296,7 @@ class _DatePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () async {
@@ -323,7 +328,7 @@ class _DatePickerField extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              DateFormat.yMMMd().format(date),
+              l10n.formatShortDate(date),
               style: Theme.of(context).textTheme.bodyLarge,
             ),
           ],
@@ -344,13 +349,14 @@ class _PaymentMethodSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: PaymentMethod.values.map((method) {
         final isSelected = method == selected;
         return FilterChip(
-          label: Text(method.label),
+          label: Text(_methodLabel(method, l10n)),
           selected: isSelected,
           onSelected: (val) => onChanged(val ? method : null),
           showCheckmark: false,
@@ -358,4 +364,13 @@ class _PaymentMethodSelector extends StatelessWidget {
       }).toList(),
     );
   }
+
+  String _methodLabel(PaymentMethod method, AppLocalizations l10n) =>
+      switch (method) {
+        PaymentMethod.cash => l10n.paymentCash,
+        PaymentMethod.bankTransfer => l10n.paymentBankTransfer,
+        PaymentMethod.card => l10n.paymentCard,
+        PaymentMethod.autoDebit => l10n.paymentAutoDebit,
+        PaymentMethod.other => l10n.paymentOther,
+      };
 }
