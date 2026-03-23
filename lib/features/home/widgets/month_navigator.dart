@@ -23,7 +23,7 @@ class MonthNavigator extends ConsumerWidget {
     }
 
     return SizedBox(
-      height: 48,
+      height: 56,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -42,7 +42,7 @@ class MonthNavigator extends ConsumerWidget {
               ),
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                style: Theme.of(context).textTheme.titleLarge!.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
               ),
@@ -74,6 +74,7 @@ class MonthNavigator extends ConsumerWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     textStyle: Theme.of(context).textTheme.labelSmall,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
                   ),
                   child: const Text('Today'),
                 ),

@@ -16,55 +16,109 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _SectionHeader(label: 'Notifications'),
-          SwitchListTile(
-            title: const Text('Bill reminders'),
-            subtitle: const Text(
-              'Get notified 2 days and 1 day before each bill is due',
-            ),
-            value: settings.notificationsEnabled,
-            onChanged: (enabled) async {
-              if (enabled) {
-                final granted = await NotificationService.instance
-                    .requestPermission();
-                if (!granted && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Notification permission denied. '
-                        'Enable it in system settings.',
-                      ),
+          // APPEARANCE
+          const _SectionLabel(label: 'Appearance'),
+          _SettingsCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      label: Text('Light'),
                     ),
-                  );
-                  return;
-                }
-              } else {
-                await NotificationService.instance.cancelAll();
-              }
-              notifier.setNotificationsEnabled(enabled);
-            },
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      label: Text('System'),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      label: Text('Dark'),
+                    ),
+                  ],
+                  selected: {settings.themeMode},
+                  onSelectionChanged: (selected) {
+                    notifier.setThemeMode(selected.first);
+                  },
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  expandedInsets: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
-          const Divider(),
-          _SectionHeader(label: 'Data'),
-          ListTile(
-            leading: const Icon(Icons.upload_outlined),
-            title: const Text('Export data'),
-            subtitle: const Text('Save a JSON backup or share it'),
-            onTap: () => _export(context, ref),
+
+          // NOTIFICATIONS
+          const _SectionLabel(label: 'Notifications'),
+          _SettingsCard(
+            children: [
+              _SettingsTile(
+                icon: Icons.notifications_outlined,
+                title: 'Bill Reminders',
+                subtitle: 'Get notified 2 days and 1 day before each bill is due',
+                trailing: Switch(
+                  value: settings.notificationsEnabled,
+                  onChanged: (enabled) async {
+                    if (enabled) {
+                      final granted = await NotificationService.instance
+                          .requestPermission();
+                      if (!granted && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Notification permission denied. '
+                              'Enable it in system settings.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                    } else {
+                      await NotificationService.instance.cancelAll();
+                    }
+                    notifier.setNotificationsEnabled(enabled);
+                  },
+                ),
+              ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: const Text('Import data'),
-            subtitle: const Text('Restore from a JSON backup'),
-            onTap: () => _import(context, ref),
+
+          // DATA
+          const _SectionLabel(label: 'Data'),
+          _SettingsCard(
+            children: [
+              _SettingsTile(
+                icon: Icons.upload_outlined,
+                title: 'Export data',
+                subtitle: 'Save a JSON backup or share it',
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _export(context, ref),
+              ),
+              const Divider(height: 1, indent: 64, endIndent: 0),
+              _SettingsTile(
+                icon: Icons.download_outlined,
+                title: 'Import data',
+                subtitle: 'Restore from a JSON backup',
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _import(context, ref),
+              ),
+            ],
           ),
-          const Divider(),
-          _SectionHeader(label: 'About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Rounds'),
-            subtitle: Text('Version 1.0.0'),
+
+          // ABOUT
+          const _SectionLabel(label: 'About'),
+          _SettingsCard(
+            children: [
+              const _SettingsTile(
+                icon: Icons.info_outline,
+                title: 'Rounds',
+                subtitle: 'Version 1.0.0',
+              ),
+            ],
           ),
         ],
       ),
@@ -113,10 +167,6 @@ class SettingsScreen extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    // For file picking we show a snackbar directing the user — full file
-    // picker integration requires file_picker package which is outside our
-    // current dependency set. The import logic is fully implemented in
-    // BackupService.importFromFile(path) and can be wired to any file picker.
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(
@@ -129,23 +179,77 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(4, 24, 4, 8),
       child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium!.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+        label.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall!.copyWith(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.5),
+              letterSpacing: 1.2,
             ),
       ),
+    );
+  }
+}
+
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(children: children),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 20, color: cs.onPrimaryContainer),
+      ),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle!) : null,
+      trailing: trailing,
+      onTap: onTap,
     );
   }
 }

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/home/widgets/bill_card.dart';
-import 'package:rounds/features/home/widgets/month_header.dart';
 import 'package:rounds/features/home/widgets/month_navigator.dart';
 import 'package:rounds/features/mark_paid/mark_paid_sheet.dart';
 
@@ -14,93 +13,82 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final instancesAsync = ref.watch(monthInstancesProvider);
-    final summary = ref.watch(monthSummaryProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rounds'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add bill',
-            onPressed: () => context.push('/bills/new'),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          const MonthNavigator(),
-          if (summary != null) MonthHeader(summary: summary),
-          const SizedBox(height: 8),
-          Expanded(
-            child: instancesAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Text('Error loading bills: $e'),
-              ),
-              data: (instances) {
-                if (instances.isEmpty) {
-                  return _EmptyState(
-                    onAddBill: () => context.push('/bills/new'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const MonthNavigator(),
+            Expanded(
+              child: instancesAsync.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Text('Error loading bills: $e'),
+                ),
+                data: (instances) {
+                  if (instances.isEmpty) {
+                    return _EmptyState(
+                      onAddBill: () => context.push('/bills/new'),
+                    );
+                  }
+
+                  final pending =
+                      instances.where((e) => !e.instance.isPaid).toList();
+                  final paid =
+                      instances.where((e) => e.instance.isPaid).toList();
+
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                    children: [
+                      if (pending.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: 'Pending',
+                          count: pending.length,
+                        ),
+                        const SizedBox(height: 8),
+                        ...pending.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: BillCard(
+                              entry: entry,
+                              onTap: () => _openMarkPaid(context, entry),
+                              onLongPress: () =>
+                                  context.push('/bills/${entry.bill.id}'),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (paid.isNotEmpty) ...[
+                        if (pending.isNotEmpty) const SizedBox(height: 8),
+                        _SectionHeader(
+                          title: 'Paid',
+                          count: paid.length,
+                        ),
+                        const SizedBox(height: 8),
+                        ...paid.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: BillCard(
+                              entry: entry,
+                              onTap: () => _openMarkPaid(context, entry),
+                              onLongPress: () =>
+                                  context.push('/bills/${entry.bill.id}'),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   );
-                }
-
-                final pending =
-                    instances.where((e) => !e.instance.isPaid).toList();
-                final paid =
-                    instances.where((e) => e.instance.isPaid).toList();
-
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  children: [
-                    if (pending.isNotEmpty) ...[
-                      _SectionHeader(
-                        title: 'Pending',
-                        count: pending.length,
-                      ),
-                      const SizedBox(height: 8),
-                      ...pending.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: BillCard(
-                            entry: entry,
-                            onTap: () => _openMarkPaid(context, entry),
-                            onLongPress: () => context
-                                .push('/bills/${entry.bill.id}'),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (paid.isNotEmpty) ...[
-                      if (pending.isNotEmpty) const SizedBox(height: 8),
-                      _SectionHeader(
-                        title: 'Paid',
-                        count: paid.length,
-                      ),
-                      const SizedBox(height: 8),
-                      ...paid.map(
-                        (entry) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: BillCard(
-                            entry: entry,
-                            onTap: () => _openMarkPaid(context, entry),
-                            onLongPress: () => context
-                                .push('/bills/${entry.bill.id}'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/bills/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Bill'),
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -133,24 +121,20 @@ class _SectionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
           Text(
             title,
-            style: theme.textTheme.labelLarge!.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              letterSpacing: 0.5,
+            style: theme.textTheme.titleLarge!.copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '$count',
-              style: theme.textTheme.labelSmall,
+          Text(
+            '$count ${count == 1 ? 'item' : 'items'}',
+            style: theme.textTheme.bodySmall!.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],

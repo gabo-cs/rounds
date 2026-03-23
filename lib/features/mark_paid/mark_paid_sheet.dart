@@ -70,7 +70,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
       child: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -81,32 +81,48 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: cs.outlineVariant,
+                      color: cs.onSurface.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // Bill name header
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Header row: bill name + close button
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      bill.name,
-                      style: theme.textTheme.titleLarge!
-                          .copyWith(fontWeight: FontWeight.w700),
+                    Expanded(
+                      child: Text(
+                        bill.name,
+                        style: theme.textTheme.headlineMedium!
+                            .copyWith(fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      instance.isPaid
-                          ? 'Update payment details'
-                          : 'Mark as paid',
-                      style: theme.textTheme.bodyMedium!.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.6),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHigh,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, size: 18),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 4),
+
+                // Subtitle
+                Text(
+                  instance.isPaid ? 'Update payment' : 'Mark as paid',
+                  style: theme.textTheme.bodyMedium!.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -177,7 +193,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 ],
 
                 // Primary action button
-                FilledButton(
+                FilledButton.icon(
                   onPressed: state.isSubmitting
                       ? null
                       : () async {
@@ -186,15 +202,16 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                             Navigator.of(context).pop();
                           }
                         },
-                  child: state.isSubmitting
+                  icon: state.isSubmitting
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 18,
+                          width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(
-                          instance.isPaid ? 'Update Payment' : 'Mark as Paid',
-                        ),
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(
+                    instance.isPaid ? 'Update Payment' : 'Confirm Payment',
+                  ),
                 ),
 
                 // Undo button
@@ -255,12 +272,13 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      label,
-      style: Theme.of(context).textTheme.labelMedium!.copyWith(
+      label.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
             color: Theme.of(context)
                 .colorScheme
                 .onSurface
                 .withValues(alpha: 0.7),
+            letterSpacing: 1.0,
           ),
     );
   }
@@ -275,7 +293,7 @@ class _DatePickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
@@ -288,9 +306,10 @@ class _DatePickerField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
-          borderRadius: BorderRadius.circular(10),
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF141F30)
+              : const Color(0xFFE4EDF6),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
