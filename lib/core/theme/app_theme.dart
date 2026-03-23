@@ -182,6 +182,12 @@ abstract class AppTheme {
           );
         }),
       ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        elevation: 4,
+        shape: const CircleBorder(),
+      ),
       dividerTheme: DividerThemeData(
         color: isDark ? const Color(0xFF1E2D3F) : const Color(0xFFE5EDF4),
         space: 1,
