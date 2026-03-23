@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/data/repositories/bills_repository.dart';
@@ -62,6 +63,14 @@ final monthInstancesProvider =
     final activeBills = await billsRepo.watchAllActiveBills().first;
     await instancesRepo.ensureInstancesExist(
       activeBills,
+      selected.year,
+      selected.month,
+    );
+    final instances = await instancesRepo
+        .watchInstancesForMonth(selected.year, selected.month)
+        .first;
+    await NotificationService.instance.scheduleForMonth(
+      instances,
       selected.year,
       selected.month,
     );

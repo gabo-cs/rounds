@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
@@ -72,6 +73,7 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
             state.referenceNote.trim().isEmpty ? null : state.referenceNote.trim(),
         amountPaid: state.amountPaid,
       );
+      await NotificationService.instance.cancelForInstance(_instanceId);
       return true;
     } catch (e) {
       state = state.copyWith(
