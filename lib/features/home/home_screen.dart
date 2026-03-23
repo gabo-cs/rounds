@@ -46,10 +46,10 @@ class HomeScreen extends ConsumerWidget {
                           title: 'Pending',
                           count: pending.length,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 14),
                         ...pending.map(
                           (entry) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: BillCard(
                               entry: entry,
                               onTap: () => _openMarkPaid(context, entry),
@@ -60,15 +60,15 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                       if (paid.isNotEmpty) ...[
-                        if (pending.isNotEmpty) const SizedBox(height: 8),
+                        if (pending.isNotEmpty) const SizedBox(height: 20),
                         _SectionHeader(
                           title: 'Paid',
                           count: paid.length,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 14),
                         ...paid.map(
                           (entry) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: BillCard(
                               entry: entry,
                               onTap: () => _openMarkPaid(context, entry),
@@ -167,7 +167,7 @@ class _EmptyState extends StatelessWidget {
               'No bills yet',
               style: theme.textTheme.titleLarge,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Text(
               'Add your recurring bills to start tracking your monthly payments.',
               textAlign: TextAlign.center,

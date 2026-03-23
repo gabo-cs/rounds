@@ -20,6 +20,7 @@ class BillCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isPaid = entry.instance.isPaid;
+    final cs = theme.colorScheme;
 
     return Card(
       child: InkWell(
@@ -27,7 +28,7 @@ class BillCard extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               BillIcon(
@@ -37,6 +38,7 @@ class BillCard extends StatelessWidget {
                 size: 48,
               ),
               const SizedBox(width: 14),
+              // Left column: name + subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,18 +48,31 @@ class BillCard extends StatelessWidget {
                       style: theme.textTheme.titleMedium!.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isPaid
-                            ? theme.colorScheme.onSurface
-                                .withValues(alpha: 0.5)
+                            ? cs.onSurface.withValues(alpha: 0.5)
                             : null,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    _SubtitleRow(entry: entry, isPaid: isPaid),
+                    if (isPaid) ...[
+                      const SizedBox(height: 3),
+                      _PaidSubtitle(entry: entry),
+                    ] else if (entry.bill.category != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        entry.bill.category!,
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: cs.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _AmountLabel(entry: entry, isPaid: isPaid),
+              const SizedBox(width: 12),
+              // Right column: due date (pending) or amount (paid)
+              if (!isPaid)
+                _DueDateLabel(dueDay: entry.bill.dueDayOfMonth)
+              else
+                _AmountLabel(entry: entry),
             ],
           ),
         ),
@@ -66,67 +81,21 @@ class BillCard extends StatelessWidget {
   }
 }
 
-class _AmountLabel extends StatelessWidget {
-  const _AmountLabel({required this.entry, required this.isPaid});
+class _DueDateLabel extends StatelessWidget {
+  const _DueDateLabel({required this.dueDay});
 
-  final BillInstanceWithBill entry;
-  final bool isPaid;
+  final int dueDay;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-
-    final displayAmount = isPaid
-        ? (entry.instance.amountPaid ?? entry.bill.amount)
-        : entry.bill.amount;
-
-    if (displayAmount == null) return const SizedBox.shrink();
-
     return Text(
-      '\$${displayAmount.toStringAsFixed(displayAmount == displayAmount.truncateToDouble() ? 0 : 2)}',
-      style: theme.textTheme.titleMedium!.copyWith(
-        fontWeight: FontWeight.w700,
-        color: isPaid
-            ? cs.onSurface.withValues(alpha: 0.4)
-            : cs.onSurface,
+      'Due the ${_ordinal(dueDay)}',
+      textAlign: TextAlign.right,
+      style: theme.textTheme.titleSmall!.copyWith(
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
       ),
-    );
-  }
-}
-
-class _SubtitleRow extends StatelessWidget {
-  const _SubtitleRow({required this.entry, required this.isPaid});
-
-  final BillInstanceWithBill entry;
-  final bool isPaid;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final subtitleColor = cs.onSurface.withValues(alpha: 0.55);
-
-    if (isPaid) {
-      final paidAt = entry.instance.paidAt;
-      final method = PaymentMethod.fromString(entry.instance.paymentMethod);
-      final parts = <String>[];
-      if (paidAt != null) parts.add('Paid ${DateFormat.MMMd().format(paidAt)}');
-      if (method != null) parts.add(method.label);
-      return Text(
-        parts.isEmpty ? 'Paid' : parts.join(' · '),
-        style: theme.textTheme.bodySmall!.copyWith(color: subtitleColor),
-      );
-    }
-
-    final dueDay = entry.bill.dueDayOfMonth;
-    final category = entry.bill.category;
-    final parts = ['Due the ${_ordinal(dueDay)}'];
-    if (category != null) parts.add(category);
-
-    return Text(
-      parts.join(' · '),
-      style: theme.textTheme.bodySmall!.copyWith(color: subtitleColor),
     );
   }
 
@@ -138,5 +107,51 @@ class _SubtitleRow extends StatelessWidget {
       3 => '${n}rd',
       _ => '${n}th',
     };
+  }
+}
+
+class _AmountLabel extends StatelessWidget {
+  const _AmountLabel({required this.entry});
+
+  final BillInstanceWithBill entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayAmount =
+        entry.instance.amountPaid ?? entry.bill.amount;
+    if (displayAmount == null) return const SizedBox.shrink();
+
+    final cs = Theme.of(context).colorScheme;
+    return Text(
+      '\$${displayAmount.toStringAsFixed(displayAmount == displayAmount.truncateToDouble() ? 0 : 2)}',
+      textAlign: TextAlign.right,
+      style: Theme.of(context).textTheme.titleSmall!.copyWith(
+            fontWeight: FontWeight.w700,
+            color: cs.onSurface.withValues(alpha: 0.4),
+          ),
+    );
+  }
+}
+
+class _PaidSubtitle extends StatelessWidget {
+  const _PaidSubtitle({required this.entry});
+
+  final BillInstanceWithBill entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final paidAt = entry.instance.paidAt;
+    final method = PaymentMethod.fromString(entry.instance.paymentMethod);
+    final parts = <String>[];
+    if (paidAt != null) parts.add('Paid ${DateFormat.MMMd().format(paidAt)}');
+    if (method != null) parts.add(method.label);
+
+    return Text(
+      parts.isEmpty ? 'Paid' : parts.join(' · '),
+      style: Theme.of(context).textTheme.bodySmall!.copyWith(
+            color: cs.onSurface.withValues(alpha: 0.5),
+          ),
+    );
   }
 }

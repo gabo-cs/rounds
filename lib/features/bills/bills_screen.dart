@@ -63,10 +63,10 @@ class BillsScreen extends ConsumerWidget {
                           label: 'Active',
                           count: active.length,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 14),
                         ...active.map(
                           (bill) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: _BillRow(
                               bill: bill,
                               onTap: () =>
@@ -78,15 +78,15 @@ class BillsScreen extends ConsumerWidget {
                         ),
                       ],
                       if (archived.isNotEmpty) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 14),
                         _SectionHeader(
                           label: 'Archived',
                           count: archived.length,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 14),
                         ...archived.map(
                           (bill) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: 12),
                             child: _BillRow(
                               bill: bill,
                               onTap: () =>

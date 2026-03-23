@@ -151,9 +151,36 @@ abstract class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: isDark ? const Color(0xFF0A1322) : Colors.white,
         indicatorColor: isDark ? const Color(0xFF1A3A55) : const Color(0xFFD0E8F8),
-        height: 64,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        height: 72,
         surfaceTintColor: Colors.transparent,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 10,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            letterSpacing: 0.5,
+            color: selected
+                ? (isDark ? const Color(0xFF5BB8E8) : const Color(0xFF1B5278))
+                : (isDark
+                    ? const Color(0xFFE4EEFA).withValues(alpha: 0.45)
+                    : const Color(0xFF1A2B3C).withValues(alpha: 0.45)),
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            size: 24,
+            color: selected
+                ? (isDark ? const Color(0xFF5BB8E8) : const Color(0xFF1B5278))
+                : (isDark
+                    ? const Color(0xFFE4EEFA).withValues(alpha: 0.45)
+                    : const Color(0xFF1A2B3C).withValues(alpha: 0.45)),
+          );
+        }),
       ),
       dividerTheme: DividerThemeData(
         color: isDark ? const Color(0xFF1E2D3F) : const Color(0xFFE5EDF4),
