@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -18,6 +19,8 @@ class NotificationService {
     if (_initialized) return;
 
     tz.initializeTimeZones();
+    final localTimezone = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(localTimezone));
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -85,14 +88,13 @@ class NotificationService {
     final offsets = [2, 1]; // days before due
     for (final offsetDays in offsets) {
       final notifyDate = dueDate.subtract(Duration(days: offsetDays));
-
-      // Don't schedule notifications in the past
-      if (notifyDate.isBefore(DateTime.now())) continue;
-
       final scheduledDate = tz.TZDateTime.from(
         DateTime(notifyDate.year, notifyDate.month, notifyDate.day, 9, 0),
         tz.local,
       );
+
+      // Don't schedule notifications in the past
+      if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) continue;
 
       final notifId = _notificationId(entry.instance.id, offsetDays);
       final dayLabel = offsetDays == 1 ? 'tomorrow' : 'in 2 days';
