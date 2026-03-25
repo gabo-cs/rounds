@@ -106,12 +106,51 @@ class SettingsScreen extends ConsumerWidget {
                         );
                         return;
                       }
+                      await NotificationService.instance
+                          .requestExactAlarmsPermission();
                     } else {
                       await NotificationService.instance.cancelAll();
                     }
                     notifier.setNotificationsEnabled(enabled);
                   },
                 ),
+              ),
+              const Divider(height: 1, indent: 64, endIndent: 0),
+              _SettingsTile(
+                icon: Icons.bug_report_outlined,
+                title: 'Send test notification',
+                subtitle: 'Uses last bill — fires in 10 seconds',
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final instances = ref.read(monthInstancesProvider).valueOrNull;
+                  final last = instances?.isNotEmpty == true
+                      ? instances!.reduce((a, b) =>
+                          a.instance.id > b.instance.id ? a : b)
+                      : null;
+                  if (last == null) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No bills found for this month')),
+                      );
+                    }
+                    return;
+                  }
+                  try {
+                    await NotificationService.instance.requestExactAlarmsPermission();
+                    await NotificationService.instance.scheduleTestNotification(last);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Test notification for "${last.bill.name}" fires in 10 seconds')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
               ),
             ],
           ),

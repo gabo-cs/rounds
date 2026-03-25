@@ -19,8 +19,12 @@ class NotificationService {
     if (_initialized) return;
 
     tz.initializeTimeZones();
-    final localTimezone = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(localTimezone));
+    try {
+      final localTimezone = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(localTimezone));
+    } catch (_) {
+      // fall back to UTC if timezone detection fails
+    }
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -38,6 +42,17 @@ class NotificationService {
     );
 
     _initialized = true;
+  }
+
+  Future<bool> requestExactAlarmsPermission() async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return true; // not Android, nothing to do
+    final canSchedule = await android.canScheduleExactNotifications();
+    if (canSchedule ?? false) return true;
+    await android.requestExactAlarmsPermission();
+    return await android.canScheduleExactNotifications() ?? false;
   }
 
   Future<bool> requestPermission() async {
@@ -106,7 +121,7 @@ class NotificationService {
         scheduledDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
-            'bill_reminders',
+            'bill_reminders_v2',
             'Bill Reminders',
             channelDescription: 'Reminders for upcoming bill due dates',
             importance: Importance.defaultImportance,
@@ -119,6 +134,35 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
       );
     }
+  }
+
+  Future<void> scheduleTestNotification(
+    BillInstanceWithBill entry, {
+    int secondsFromNow = 10,
+  }) async {
+    if (!_initialized) return;
+    final scheduledDate = tz.TZDateTime.now(tz.local).add(
+      Duration(seconds: secondsFromNow),
+    );
+    await _plugin.zonedSchedule(
+      999999,
+      '${entry.bill.name} due tomorrow',
+      '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : 'Bill'} due on the ${_ordinal(entry.bill.dueDayOfMonth)}',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'bill_reminders_v2',
+          'Bill Reminders',
+          channelDescription: 'Reminders for upcoming bill due dates',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 
   Future<void> cancelForInstance(int instanceId) async {
