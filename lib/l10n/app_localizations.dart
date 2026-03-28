@@ -162,6 +162,12 @@ abstract class AppLocalizations {
   String get englishLanguage;
   String get spanishLanguage;
 
+  // ── Notifications ──────────────────────────────────────────────────────────────
+
+  String get notificationTomorrow;
+  String get notificationIn2Days;
+  String get notificationBillLabel;
+
   // ── Payment methods ────────────────────────────────────────────────────────────
 
   String get paymentCash;

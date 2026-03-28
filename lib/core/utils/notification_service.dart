@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class NotificationService {
   NotificationService._();
@@ -82,13 +83,18 @@ class NotificationService {
   Future<void> scheduleForMonth(
     List<BillInstanceWithBill> instances,
     int year,
-    int month,
-  ) async {
+    int month, {
+    String languageCode = 'en',
+  }) async {
     if (!_initialized) return;
+
+    final l10n = languageCode == 'es'
+        ? AppLocalizationsEs()
+        : AppLocalizationsEn();
 
     for (final entry in instances) {
       if (entry.instance.isPaid) continue;
-      await _scheduleRemindersForInstance(entry, year, month);
+      await _scheduleRemindersForInstance(entry, year, month, l10n);
     }
   }
 
@@ -96,6 +102,7 @@ class NotificationService {
     BillInstanceWithBill entry,
     int year,
     int month,
+    AppLocalizations l10n,
   ) async {
     final dueDay = entry.bill.dueDayOfMonth;
     final dueDate = DateTime(year, month, dueDay);
@@ -112,12 +119,14 @@ class NotificationService {
       if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) continue;
 
       final notifId = _notificationId(entry.instance.id, offsetDays);
-      final dayLabel = offsetDays == 1 ? 'tomorrow' : 'in 2 days';
+      final dayLabel = offsetDays == 1
+          ? l10n.notificationTomorrow
+          : l10n.notificationIn2Days;
 
       await _plugin.zonedSchedule(
         notifId,
-        '${entry.bill.name} due $dayLabel',
-        '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : 'Bill'} due on the ${_ordinal(dueDay)}',
+        '${entry.bill.name} — $dayLabel',
+        '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel} — ${l10n.dueThe(dueDay)}',
         scheduledDate,
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -139,15 +148,19 @@ class NotificationService {
   Future<void> scheduleTestNotification(
     BillInstanceWithBill entry, {
     int secondsFromNow = 10,
+    String languageCode = 'en',
   }) async {
     if (!_initialized) return;
+    final l10n = languageCode == 'es'
+        ? AppLocalizationsEs()
+        : AppLocalizationsEn();
     final scheduledDate = tz.TZDateTime.now(tz.local).add(
       Duration(seconds: secondsFromNow),
     );
     await _plugin.zonedSchedule(
       999999,
-      '${entry.bill.name} due tomorrow',
-      '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : 'Bill'} due on the ${_ordinal(entry.bill.dueDayOfMonth)}',
+      '${entry.bill.name} — ${l10n.notificationTomorrow}',
+      '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel} — ${l10n.dueThe(entry.bill.dueDayOfMonth)}',
       scheduledDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -183,13 +196,4 @@ class NotificationService {
     return instanceId * 10 + offsetDays;
   }
 
-  String _ordinal(int n) {
-    if (n >= 11 && n <= 13) return '${n}th';
-    return switch (n % 10) {
-      1 => '${n}st',
-      2 => '${n}nd',
-      3 => '${n}rd',
-      _ => '${n}th',
-    };
-  }
 }

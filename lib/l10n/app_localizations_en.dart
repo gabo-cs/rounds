@@ -285,6 +285,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get spanishLanguage => 'Spanish';
 
+  // ── Notifications ──────────────────────────────────────────────────────────────
+
+  @override
+  String get notificationTomorrow => 'due tomorrow';
+  @override
+  String get notificationIn2Days => 'due in 2 days';
+  @override
+  String get notificationBillLabel => 'Bill';
+
   // ── Payment methods ────────────────────────────────────────────────────────────
 
   @override

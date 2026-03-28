@@ -137,7 +137,8 @@ class SettingsScreen extends ConsumerWidget {
                   }
                   try {
                     await NotificationService.instance.requestExactAlarmsPermission();
-                    await NotificationService.instance.scheduleTestNotification(last);
+                    final languageCode = ref.read(settingsProvider).languageCode;
+                    await NotificationService.instance.scheduleTestNotification(last, languageCode: languageCode);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Test notification for "${last.bill.name}" fires in 10 seconds')),

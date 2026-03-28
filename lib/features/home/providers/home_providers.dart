@@ -3,6 +3,7 @@ import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/data/repositories/bills_repository.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 
 // --- Root providers ---
 
@@ -72,10 +73,12 @@ final monthInstancesProvider =
     final instances = await instancesRepo
         .watchInstancesForMonth(selected.year, selected.month)
         .first;
+    final languageCode = ref.read(settingsProvider).languageCode;
     await NotificationService.instance.scheduleForMonth(
       instances,
       selected.year,
       selected.month,
+      languageCode: languageCode,
     );
   }
 
