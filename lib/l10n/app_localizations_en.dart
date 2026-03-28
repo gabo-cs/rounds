@@ -293,6 +293,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationIn2Days => 'due in 2 days';
   @override
   String get notificationBillLabel => 'Bill';
+  @override
+  String get snooze30Min => '30 min';
+  @override
+  String get snooze1Hour => '1 hour';
+  @override
+  String get snooze3Hours => '3 hours';
 
   // ── Payment methods ────────────────────────────────────────────────────────────
 

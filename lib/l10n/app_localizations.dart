@@ -167,6 +167,9 @@ abstract class AppLocalizations {
   String get notificationTomorrow;
   String get notificationIn2Days;
   String get notificationBillLabel;
+  String get snooze30Min;
+  String get snooze1Hour;
+  String get snooze3Hours;
 
   // ── Payment methods ────────────────────────────────────────────────────────────
 
