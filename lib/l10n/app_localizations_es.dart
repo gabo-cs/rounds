@@ -44,12 +44,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String dueThe(int day) => 'Vence el $day';
 
   @override
+  String overdueSince(int day) => 'Venció el $day';
+
+  @override
   String dueDayOption(int day) => 'Día $day del mes';
 
   // ── Home screen ──────────────────────────────────────────────────────────────
 
   @override
   String get pending => 'Pendiente';
+  @override
+  String get overdue => 'Vencida';
   @override
   String get noBillsYet => 'Sin facturas';
   @override

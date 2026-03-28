@@ -53,13 +53,16 @@ final monthInstancesProvider =
   final instancesRepo = ref.watch(billInstancesRepositoryProvider);
   final billsRepo = ref.watch(billsRepositoryProvider);
 
-  // Only auto-generate instances for the current month.
-  // Past months show only what was explicitly recorded (paid bills).
+  // Auto-generate instances for the current month and future months
+  // through end of 2026. Past months show only what was explicitly recorded.
   final now = DateTime.now();
-  final isCurrentMonth =
-      selected.year == now.year && selected.month == now.month;
+  final selectedDate = DateTime(selected.year, selected.month);
+  final currentMonth = DateTime(now.year, now.month);
+  final cutoff = DateTime(2026, 12);
+  final shouldGenerate =
+      !selectedDate.isBefore(currentMonth) && !selectedDate.isAfter(cutoff);
 
-  if (isCurrentMonth) {
+  if (shouldGenerate) {
     final activeBills = await billsRepo.watchAllActiveBills().first;
     await instancesRepo.ensureInstancesExist(
       activeBills,

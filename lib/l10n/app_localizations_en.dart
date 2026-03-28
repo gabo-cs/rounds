@@ -43,6 +43,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String dueThe(int day) => 'Due the ${_ordinal(day)}';
 
   @override
+  String overdueSince(int day) => 'Was due the ${_ordinal(day)}';
+
+  @override
   String dueDayOption(int day) {
     if (day >= 11 && day <= 13) return '${day}th of the month';
     final suffix = switch (day % 10) {
@@ -68,6 +71,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pending => 'Pending';
+  @override
+  String get overdue => 'Overdue';
   @override
   String get noBillsYet => 'No bills yet';
   @override

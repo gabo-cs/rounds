@@ -46,12 +46,16 @@ abstract class AppLocalizations {
   /// Full label shown on a pending bill card, e.g. "Due the 15th" / "Vence el 15".
   String dueThe(int day);
 
+  /// Label for an overdue bill, e.g. "Was due the 24th" / "Venció el 24".
+  String overdueSince(int day);
+
   /// Option shown in the due-day dropdown, e.g. "15th of the month" / "Día 15 del mes".
   String dueDayOption(int day);
 
   // ── Home screen ──────────────────────────────────────────────────────────────
 
   String get pending;
+  String get overdue;
   String get noBillsYet;
   String get addFirstBill;
   String get addFirstBillHomeSubtitle;

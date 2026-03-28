@@ -10,11 +10,13 @@ class BillCard extends StatelessWidget {
     required this.entry,
     required this.onTap,
     required this.onLongPress,
+    this.isOverdue = false,
   });
 
   final BillInstanceWithBill entry;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final bool isOverdue;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +73,10 @@ class BillCard extends StatelessWidget {
               const SizedBox(width: 12),
               // Right column: due date (pending) or amount (paid)
               if (!isPaid)
-                _DueDateLabel(dueDay: entry.bill.dueDayOfMonth)
+                _DueDateLabel(
+                  dueDay: entry.bill.dueDayOfMonth,
+                  isOverdue: isOverdue,
+                )
               else
                 _AmountLabel(entry: entry),
             ],
@@ -83,20 +88,23 @@ class BillCard extends StatelessWidget {
 }
 
 class _DueDateLabel extends StatelessWidget {
-  const _DueDateLabel({required this.dueDay});
+  const _DueDateLabel({required this.dueDay, this.isOverdue = false});
 
   final int dueDay;
+  final bool isOverdue;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Text(
-      l10n.dueThe(dueDay),
+      isOverdue ? l10n.overdueSince(dueDay) : l10n.dueThe(dueDay),
       textAlign: TextAlign.right,
       style: theme.textTheme.titleSmall!.copyWith(
         fontWeight: FontWeight.w600,
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+        color: isOverdue
+            ? theme.colorScheme.error
+            : theme.colorScheme.onSurface.withValues(alpha: 0.85),
       ),
     );
   }

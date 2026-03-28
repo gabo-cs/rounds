@@ -35,15 +35,54 @@ class HomeScreen extends ConsumerWidget {
                     );
                   }
 
-                  final pending =
+                  final now = DateTime.now();
+                  final today = DateTime(now.year, now.month, now.day);
+                  final unpaid =
                       instances.where((e) => !e.instance.isPaid).toList();
                   final paid =
                       instances.where((e) => e.instance.isPaid).toList();
 
+                  final overdue = unpaid.where((e) {
+                    final due = DateTime(
+                      e.instance.year,
+                      e.instance.month,
+                      e.bill.dueDayOfMonth,
+                    );
+                    return due.isBefore(today);
+                  }).toList();
+                  final pending = unpaid.where((e) {
+                    final due = DateTime(
+                      e.instance.year,
+                      e.instance.month,
+                      e.bill.dueDayOfMonth,
+                    );
+                    return !due.isBefore(today);
+                  }).toList();
+
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
                     children: [
+                      if (overdue.isNotEmpty) ...[
+                        _SectionHeader(
+                          title: l10n.overdue,
+                          count: overdue.length,
+                        ),
+                        const SizedBox(height: 14),
+                        ...overdue.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: BillCard(
+                              entry: entry,
+                              isOverdue: true,
+                              onTap: () => _openMarkPaid(context, entry),
+                              onLongPress: () =>
+                                  context.push('/bills/${entry.bill.id}'),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (pending.isNotEmpty) ...[
+                        if (overdue.isNotEmpty) const SizedBox(height: 20),
                         _SectionHeader(
                           title: l10n.pending,
                           count: pending.length,
@@ -62,7 +101,8 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                       if (paid.isNotEmpty) ...[
-                        if (pending.isNotEmpty) const SizedBox(height: 20),
+                        if (overdue.isNotEmpty || pending.isNotEmpty)
+                          const SizedBox(height: 20),
                         _SectionHeader(
                           title: l10n.paid,
                           count: paid.length,
