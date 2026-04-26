@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 182 182" width="1024" height="1024">
+  <!--
+    Adaptive icon foreground: segments only, no background.
+    Content is in the center 100×100 area (offset 41,41) of the 182×182 canvas.
+    That puts the ring at ~55% of the total canvas, safely inside the 66/108 safe zone.
+  -->
+  <defs>
+    <linearGradient id="paid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Paid segments (0–3) -->
+  <path d="M 91 56 A 35 35 0 0 1 114.42 64.99"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 121.31 73.5 A 35 35 0 0 1 125.23 98.28"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 121.31 108.5 A 35 35 0 0 1 101.82 124.29"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 91 126 A 35 35 0 0 1 67.58 117.01"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Pending segments (4–5) -->
+  <path d="M 60.69 108.5 A 35 35 0 0 1 56.77 83.72"
+        fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 60.69 73.5 A 35 35 0 0 1 80.18 57.71"
+        fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
+</svg>

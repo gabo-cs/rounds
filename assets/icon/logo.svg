@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="1024" height="1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#1e2d5a"/>
+      <stop offset="100%" stop-color="#0a0f1e"/>
+    </radialGradient>
+    <linearGradient id="paid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background: rounded square -->
+  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+
+  <!--
+    6 segments, each 42°, gap 18°, radius 35, stroke-width 10
+    Starts at 12 o'clock (-90°), clockwise
+    Segments 0–3: paid (bright)   Segments 4–5: pending (muted)
+  -->
+
+  <!-- Segment 0: -90° → -48° (12 o'clock → ~1:35) -->
+  <path d="M 50 15 A 35 35 0 0 1 73.42 23.99"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Segment 1: -30° → 12° (~2 o'clock → ~3:20) -->
+  <path d="M 80.31 32.5 A 35 35 0 0 1 84.23 57.28"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Segment 2: 30° → 72° (~4 o'clock → ~6:00) -->
+  <path d="M 80.31 67.5 A 35 35 0 0 1 60.82 83.29"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Segment 3: 90° → 132° (6 o'clock → ~7:45) -->
+  <path d="M 50 85 A 35 35 0 0 1 26.58 76.01"
+        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Segment 4: 150° → 192° (~9:30 → ~11:00) — pending -->
+  <path d="M 19.69 67.5 A 35 35 0 0 1 15.77 42.72"
+        fill="none" stroke="#293548" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Segment 5: 210° → 252° (~11:15 → ~12:15) — pending -->
+  <path d="M 19.69 32.5 A 35 35 0 0 1 39.18 16.71"
+        fill="none" stroke="#293548" stroke-width="10" stroke-linecap="round"/>
+</svg>
