@@ -35,7 +35,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
     if (instance.isPaid) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final notifier = ref.read(markPaidProvider(instance.id).notifier);
+        final notifier = ref.read(markPaidProvider(widget.entry).notifier);
         if (instance.paidAt != null) notifier.setDate(instance.paidAt!);
         notifier.setPaymentMethod(
             PaymentMethod.fromString(instance.paymentMethod));
@@ -58,8 +58,8 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
   Widget build(BuildContext context) {
     final instance = widget.entry.instance;
     final bill = widget.entry.bill;
-    final state = ref.watch(markPaidProvider(instance.id));
-    final notifier = ref.read(markPaidProvider(instance.id).notifier);
+    final state = ref.watch(markPaidProvider(widget.entry));
+    final notifier = ref.read(markPaidProvider(widget.entry).notifier);
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);

@@ -3,6 +3,7 @@ import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 
 class MarkPaidState {
   const MarkPaidState({
@@ -44,11 +45,13 @@ class MarkPaidState {
 }
 
 class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
-  MarkPaidNotifier(this._repo, this._instanceId)
+  MarkPaidNotifier(this._repo, this._entry, this._languageCode)
       : super(MarkPaidState(paidAt: DateTime.now()));
 
   final BillInstancesRepository _repo;
-  final int _instanceId;
+  final BillInstanceWithBill _entry;
+  final String _languageCode;
+  int get _instanceId => _entry.instance.id;
 
   void setDate(DateTime date) => state = state.copyWith(paidAt: date);
 
@@ -88,6 +91,19 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
     state = state.copyWith(isSubmitting: true, clearError: true);
     try {
       await _repo.unmarkPaid(_instanceId);
+      // If the bill is past its due date it's now overdue — start daily reminders.
+      final dueDate = DateTime(
+        _entry.instance.year,
+        _entry.instance.month,
+        _entry.bill.dueDayOfMonth,
+      );
+      final today = DateTime.now();
+      if (dueDate.isBefore(DateTime(today.year, today.month, today.day))) {
+        await NotificationService.instance.scheduleOverdueReminderForInstance(
+          _entry,
+          languageCode: _languageCode,
+        );
+      }
       return true;
     } catch (e) {
       state = state.copyWith(
@@ -100,9 +116,11 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
 }
 
 final markPaidProvider = StateNotifierProvider.family
-    .autoDispose<MarkPaidNotifier, MarkPaidState, int>((ref, instanceId) {
+    .autoDispose<MarkPaidNotifier, MarkPaidState, BillInstanceWithBill>(
+        (ref, entry) {
   return MarkPaidNotifier(
     ref.watch(billInstancesRepositoryProvider),
-    instanceId,
+    entry,
+    ref.read(settingsProvider).languageCode,
   );
 });

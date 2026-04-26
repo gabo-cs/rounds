@@ -201,7 +201,8 @@ class NotificationService {
   }
 
   /// Schedule reminders for all pending instances in the given month.
-  /// Sends notifications 2 days before and 1 day before the due date.
+  /// Sends notifications 2 days and 1 day before the due date, and a daily
+  /// repeating notification for any instance that is already past due.
   Future<void> scheduleForMonth(
     List<BillInstanceWithBill> instances,
     int year,
@@ -214,10 +215,80 @@ class NotificationService {
         ? AppLocalizationsEs()
         : AppLocalizationsEn();
 
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
     for (final entry in instances) {
       if (entry.instance.isPaid) continue;
       await _scheduleRemindersForInstance(entry, year, month, l10n);
+      final dueDate = DateTime(year, month, entry.bill.dueDayOfMonth);
+      if (dueDate.isBefore(todayDate)) {
+        await _scheduleOverdueReminder(entry, l10n);
+      }
     }
+  }
+
+  Future<void> _scheduleOverdueReminder(
+    BillInstanceWithBill entry,
+    AppLocalizations l10n,
+  ) async {
+    final dueDay = entry.bill.dueDayOfMonth;
+    final title = '${entry.bill.name} — ${l10n.overdue}';
+    final body =
+        '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel}'
+        ' — ${l10n.overdueSince(dueDay)}';
+    final langCode = l10n.localeName;
+    final notifId = _notificationId(entry.instance.id, 0);
+    final payload = jsonEncode({
+      'notifId': notifId,
+      'title': title,
+      'body': body,
+      'langCode': langCode,
+    });
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, 9, 0);
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    await _plugin.zonedSchedule(
+      notifId,
+      title,
+      body,
+      scheduledDate,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'bill_reminders_v2',
+          'Bill Reminders',
+          channelDescription: 'Reminders for upcoming bill due dates',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          actions: _androidActions(l10n),
+        ),
+        iOS: DarwinNotificationDetails(
+          categoryIdentifier: 'bill_reminder_$langCode',
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
+      payload: payload,
+    );
+  }
+
+  /// Public entry point for rescheduling an overdue reminder outside of
+  /// [scheduleForMonth] — used when a payment is undone on a past-due bill.
+  Future<void> scheduleOverdueReminderForInstance(
+    BillInstanceWithBill entry, {
+    String languageCode = 'en',
+  }) async {
+    if (!_initialized) return;
+    final l10n =
+        languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
+    await _scheduleOverdueReminder(entry, l10n);
   }
 
   Future<void> _scheduleRemindersForInstance(
@@ -374,7 +445,7 @@ class NotificationService {
 
   Future<void> cancelForInstance(int instanceId) async {
     if (!_initialized) return;
-    for (final offset in [1, 2]) {
+    for (final offset in [0, 1, 2]) {
       await _plugin.cancel(_notificationId(instanceId, offset));
     }
   }
