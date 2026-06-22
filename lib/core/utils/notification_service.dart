@@ -14,6 +14,24 @@ const _kActionSnooze30 = 'snooze_30';
 const _kActionSnooze60 = 'snooze_60';
 const _kActionSnooze180 = 'snooze_180';
 
+// ── Notification offsets ─────────────────────────────────────────────────────
+// Each instance reserves a small range of notification IDs, one per reminder
+// stage. See [_notificationId].
+
+// Overdue stays at offset 0 (its value in earlier versions) so that an already
+// scheduled overdue reminder is overwritten rather than duplicated on upgrade.
+const _kOffsetOverdue = 0;
+const _kOffsetTomorrow = 1;
+const _kOffsetIn2Days = 2;
+const _kOffsetDueToday = 3;
+
+const _kAllOffsets = [
+  _kOffsetOverdue,
+  _kOffsetTomorrow,
+  _kOffsetIn2Days,
+  _kOffsetDueToday,
+];
+
 // ── Action helpers ───────────────────────────────────────────────────────────
 
 List<AndroidNotificationAction> _androidActions(AppLocalizations l10n) => [
@@ -24,6 +42,27 @@ List<AndroidNotificationAction> _androidActions(AppLocalizations l10n) => [
       AndroidNotificationAction(_kActionSnooze180, l10n.snooze3Hours,
           cancelNotification: true, showsUserInterface: true),
     ];
+
+/// Shared [NotificationDetails] for every bill reminder, so the channel,
+/// actions and iOS category stay identical across scheduling paths.
+NotificationDetails _reminderDetails(
+  AppLocalizations l10n, {
+  Importance importance = Importance.defaultImportance,
+  Priority priority = Priority.defaultPriority,
+}) =>
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        'bill_reminders_v2',
+        'Bill Reminders',
+        channelDescription: 'Reminders for upcoming bill due dates',
+        importance: importance,
+        priority: priority,
+        actions: _androidActions(l10n),
+      ),
+      iOS: DarwinNotificationDetails(
+        categoryIdentifier: 'bill_reminder_${l10n.localeName}',
+      ),
+    );
 
 DarwinNotificationCategory _darwinCategory(
   String categoryId,
@@ -89,19 +128,7 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
     title,
     body,
     snoozeTime,
-    NotificationDetails(
-      android: AndroidNotificationDetails(
-        'bill_reminders_v2',
-        'Bill Reminders',
-        channelDescription: 'Reminders for upcoming bill due dates',
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
-        actions: _androidActions(l10n),
-      ),
-      iOS: DarwinNotificationDetails(
-        categoryIdentifier: 'bill_reminder_$langCode',
-      ),
-    ),
+    _reminderDetails(l10n),
     androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
@@ -201,8 +228,16 @@ class NotificationService {
   }
 
   /// Schedule reminders for all pending instances in the given month.
-  /// Sends notifications 2 days and 1 day before the due date, and a daily
-  /// repeating notification for any instance that is already past due.
+  ///
+  /// For each unpaid instance this schedules, at 9:00 local time:
+  ///   • "due in 2 days" and "due tomorrow" reminders,
+  ///   • a "due today" reminder on the due date, and
+  ///   • an overdue reminder for the day after the due date.
+  ///
+  /// All of these are scheduled *proactively* from the due date, so they fire
+  /// even if the app is never reopened after the bill rolls over. If a bill is
+  /// already past due at scheduling time, the overdue reminder becomes a daily
+  /// repeating notification instead of a single ping.
   Future<void> scheduleForMonth(
     List<BillInstanceWithBill> instances,
     int year,
@@ -215,17 +250,109 @@ class NotificationService {
         ? AppLocalizationsEs()
         : AppLocalizationsEn();
 
-    final today = DateTime.now();
-    final todayDate = DateTime(today.year, today.month, today.day);
-
     for (final entry in instances) {
       if (entry.instance.isPaid) continue;
       await _scheduleRemindersForInstance(entry, year, month, l10n);
-      final dueDate = DateTime(year, month, entry.bill.dueDayOfMonth);
-      if (dueDate.isBefore(todayDate)) {
-        await _scheduleOverdueReminder(entry, l10n);
+    }
+  }
+
+  Future<void> _scheduleRemindersForInstance(
+    BillInstanceWithBill entry,
+    int year,
+    int month,
+    AppLocalizations l10n,
+  ) async {
+    final dueDay = entry.bill.dueDayOfMonth;
+    final dueDate = DateTime(year, month, dueDay);
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final amountLabel = entry.bill.amount != null
+        ? '\$${entry.bill.amount!.toStringAsFixed(2)}'
+        : l10n.notificationBillLabel;
+
+    // Upcoming + due-today reminders (one-shot, at 9:00 on their day).
+    final upcoming = <int, String>{
+      _kOffsetIn2Days: l10n.notificationIn2Days,
+      _kOffsetTomorrow: l10n.notificationTomorrow,
+      _kOffsetDueToday: l10n.notificationDueToday,
+    };
+    for (final offsetDays in upcoming.keys) {
+      final fireDay = dueDate.subtract(Duration(days: offsetDays));
+      await _scheduleOneShot(
+        notifId: _notificationId(entry.instance.id, offsetDays),
+        title: '${entry.bill.name} — ${upcoming[offsetDays]}',
+        body: '$amountLabel — ${l10n.dueThe(dueDay)}',
+        fireDay: fireDay,
+        l10n: l10n,
+        // If the app is opened on the due date after 9:00, still nudge instead
+        // of silently dropping the "due today" reminder.
+        catchUpSameDay: offsetDays == _kOffsetDueToday,
+      );
+    }
+
+    // Overdue reminder.
+    final overdueTitle = '${entry.bill.name} — ${l10n.overdue}';
+    final overdueBody = '$amountLabel — ${l10n.overdueSince(dueDay)}';
+    if (dueDate.isBefore(todayDate)) {
+      // Already overdue → daily repeating reminder starting at the next 9:00.
+      await _scheduleOverdueReminder(entry, l10n);
+    } else {
+      // Not yet overdue → schedule the first overdue ping for the day after
+      // the due date so it fires even if the app is never reopened.
+      await _scheduleOneShot(
+        notifId: _notificationId(entry.instance.id, _kOffsetOverdue),
+        title: overdueTitle,
+        body: overdueBody,
+        fireDay: dueDate.add(const Duration(days: 1)),
+        l10n: l10n,
+      );
+    }
+  }
+
+  /// Schedule a single notification at 9:00 on [fireDay]. Skips days whose
+  /// 9:00 slot is already in the past, unless [catchUpSameDay] is set and
+  /// [fireDay] is today, in which case it fires shortly from now.
+  Future<void> _scheduleOneShot({
+    required int notifId,
+    required String title,
+    required String body,
+    required DateTime fireDay,
+    required AppLocalizations l10n,
+    bool catchUpSameDay = false,
+  }) async {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate =
+        tz.TZDateTime(tz.local, fireDay.year, fireDay.month, fireDay.day, 9, 0);
+
+    if (scheduledDate.isBefore(now)) {
+      final isToday = fireDay.year == now.year &&
+          fireDay.month == now.month &&
+          fireDay.day == now.day;
+      if (catchUpSameDay && isToday) {
+        scheduledDate = now.add(const Duration(minutes: 1));
+      } else {
+        return; // don't schedule in the past
       }
     }
+
+    final payload = jsonEncode({
+      'notifId': notifId,
+      'title': title,
+      'body': body,
+      'langCode': l10n.localeName,
+    });
+
+    await _plugin.zonedSchedule(
+      notifId,
+      title,
+      body,
+      scheduledDate,
+      _reminderDetails(l10n),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
   }
 
   Future<void> _scheduleOverdueReminder(
@@ -237,13 +364,12 @@ class NotificationService {
     final body =
         '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel}'
         ' — ${l10n.overdueSince(dueDay)}';
-    final langCode = l10n.localeName;
-    final notifId = _notificationId(entry.instance.id, 0);
+    final notifId = _notificationId(entry.instance.id, _kOffsetOverdue);
     final payload = jsonEncode({
       'notifId': notifId,
       'title': title,
       'body': body,
-      'langCode': langCode,
+      'langCode': l10n.localeName,
     });
 
     final now = tz.TZDateTime.now(tz.local);
@@ -258,19 +384,7 @@ class NotificationService {
       title,
       body,
       scheduledDate,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'bill_reminders_v2',
-          'Bill Reminders',
-          channelDescription: 'Reminders for upcoming bill due dates',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
-          actions: _androidActions(l10n),
-        ),
-        iOS: DarwinNotificationDetails(
-          categoryIdentifier: 'bill_reminder_$langCode',
-        ),
-      ),
+      _reminderDetails(l10n),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -289,67 +403,6 @@ class NotificationService {
     final l10n =
         languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
     await _scheduleOverdueReminder(entry, l10n);
-  }
-
-  Future<void> _scheduleRemindersForInstance(
-    BillInstanceWithBill entry,
-    int year,
-    int month,
-    AppLocalizations l10n,
-  ) async {
-    final dueDay = entry.bill.dueDayOfMonth;
-    final dueDate = DateTime(year, month, dueDay);
-    final langCode = l10n.localeName;
-
-    final offsets = [2, 1]; // days before due
-    for (final offsetDays in offsets) {
-      final notifyDate = dueDate.subtract(Duration(days: offsetDays));
-      final scheduledDate = tz.TZDateTime.from(
-        DateTime(notifyDate.year, notifyDate.month, notifyDate.day, 9, 0),
-        tz.local,
-      );
-
-      // Don't schedule notifications in the past
-      if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) continue;
-
-      final notifId = _notificationId(entry.instance.id, offsetDays);
-      final dayLabel = offsetDays == 1
-          ? l10n.notificationTomorrow
-          : l10n.notificationIn2Days;
-      final title = '${entry.bill.name} — $dayLabel';
-      final body =
-          '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel} — ${l10n.dueThe(dueDay)}';
-      final payload = jsonEncode({
-        'notifId': notifId,
-        'title': title,
-        'body': body,
-        'langCode': langCode,
-      });
-
-      await _plugin.zonedSchedule(
-        notifId,
-        title,
-        body,
-        scheduledDate,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            'bill_reminders_v2',
-            'Bill Reminders',
-            channelDescription: 'Reminders for upcoming bill due dates',
-            importance: Importance.defaultImportance,
-            priority: Priority.defaultPriority,
-            actions: _androidActions(l10n),
-          ),
-          iOS: DarwinNotificationDetails(
-            categoryIdentifier: 'bill_reminder_$langCode',
-          ),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        payload: payload,
-      );
-    }
   }
 
   Future<void> scheduleTestNotification(
@@ -380,19 +433,7 @@ class NotificationService {
       title,
       body,
       scheduledDate,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'bill_reminders_v2',
-          'Bill Reminders',
-          channelDescription: 'Reminders for upcoming bill due dates',
-          importance: Importance.high,
-          priority: Priority.high,
-          actions: _androidActions(l10n),
-        ),
-        iOS: DarwinNotificationDetails(
-          categoryIdentifier: 'bill_reminder_$langCode',
-        ),
-      ),
+      _reminderDetails(l10n, importance: Importance.high, priority: Priority.high),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -423,19 +464,7 @@ class NotificationService {
       title,
       body,
       snoozeTime,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          'bill_reminders_v2',
-          'Bill Reminders',
-          channelDescription: 'Reminders for upcoming bill due dates',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
-          actions: _androidActions(l10n),
-        ),
-        iOS: DarwinNotificationDetails(
-          categoryIdentifier: 'bill_reminder_$langCode',
-        ),
-      ),
+      _reminderDetails(l10n),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -445,7 +474,7 @@ class NotificationService {
 
   Future<void> cancelForInstance(int instanceId) async {
     if (!_initialized) return;
-    for (final offset in [0, 1, 2]) {
+    for (final offset in _kAllOffsets) {
       await _plugin.cancel(_notificationId(instanceId, offset));
     }
   }
@@ -455,9 +484,9 @@ class NotificationService {
     await _plugin.cancelAll();
   }
 
-  int _notificationId(int instanceId, int offsetDays) {
-    // Combine instanceId and offset into a unique int.
-    // instanceId * 10 + offset (offset is 1 or 2)
-    return instanceId * 10 + offsetDays;
+  int _notificationId(int instanceId, int offset) {
+    // Combine instanceId and reminder offset into a unique int.
+    // instanceId * 10 + offset (offset is one of _kAllOffsets, 0..3).
+    return instanceId * 10 + offset;
   }
 }

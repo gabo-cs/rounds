@@ -248,7 +248,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get billRemindersTitle => 'Bill Reminders';
   @override
   String get billRemindersSubtitle =>
-      'Get notified 2 days and 1 day before each bill is due';
+      'Get notified before each bill is due, on the due date, and while it\'s overdue';
   @override
   String get notificationDenied =>
       'Notification permission denied. Enable it in system settings.';
@@ -287,6 +287,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   // ── Notifications ──────────────────────────────────────────────────────────────
 
+  @override
+  String get notificationDueToday => 'due today';
   @override
   String get notificationTomorrow => 'due tomorrow';
   @override

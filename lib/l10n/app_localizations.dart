@@ -164,6 +164,7 @@ abstract class AppLocalizations {
 
   // ── Notifications ──────────────────────────────────────────────────────────────
 
+  String get notificationDueToday;
   String get notificationTomorrow;
   String get notificationIn2Days;
   String get notificationBillLabel;

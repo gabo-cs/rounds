@@ -229,7 +229,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get billRemindersTitle => 'Recordatorios de facturas';
   @override
   String get billRemindersSubtitle =>
-      'Recibe notificaciones 2 días y 1 día antes del vencimiento';
+      'Recibe notificaciones antes del vencimiento, el día del vencimiento y mientras esté vencida';
   @override
   String get notificationDenied =>
       'Permiso de notificaciones denegado. Actívalo en la configuración del sistema.';
@@ -268,6 +268,8 @@ class AppLocalizationsEs extends AppLocalizations {
 
   // ── Notifications ──────────────────────────────────────────────────────────────
 
+  @override
+  String get notificationDueToday => 'vence hoy';
   @override
   String get notificationTomorrow => 'vence mañana';
   @override
