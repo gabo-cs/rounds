@@ -271,22 +271,22 @@ class NotificationService {
         : l10n.notificationBillLabel;
 
     // Upcoming + due-today reminders (one-shot, at 9:00 on their day).
-    final upcoming = <int, String>{
-      _kOffsetIn2Days: l10n.notificationIn2Days,
-      _kOffsetTomorrow: l10n.notificationTomorrow,
-      _kOffsetDueToday: l10n.notificationDueToday,
-    };
-    for (final offsetDays in upcoming.keys) {
-      final fireDay = dueDate.subtract(Duration(days: offsetDays));
+    // Each entry pairs a notification-ID slot with how many days before the
+    // due date it fires — the two are independent (the ID slot stays fixed for
+    // upgrade compatibility, the days-before drives the date).
+    final upcoming = <({int idOffset, int daysBefore, String label})>[
+      (idOffset: _kOffsetIn2Days, daysBefore: 2, label: l10n.notificationIn2Days),
+      (idOffset: _kOffsetTomorrow, daysBefore: 1, label: l10n.notificationTomorrow),
+      (idOffset: _kOffsetDueToday, daysBefore: 0, label: l10n.notificationDueToday),
+    ];
+    for (final reminder in upcoming) {
+      final fireDay = dueDate.subtract(Duration(days: reminder.daysBefore));
       await _scheduleOneShot(
-        notifId: _notificationId(entry.instance.id, offsetDays),
-        title: '${entry.bill.name} — ${upcoming[offsetDays]}',
+        notifId: _notificationId(entry.instance.id, reminder.idOffset),
+        title: '${entry.bill.name} — ${reminder.label}',
         body: '$amountLabel — ${l10n.dueThe(dueDay)}',
         fireDay: fireDay,
         l10n: l10n,
-        // If the app is opened on the due date after 9:00, still nudge instead
-        // of silently dropping the "due today" reminder.
-        catchUpSameDay: offsetDays == _kOffsetDueToday,
       );
     }
 
@@ -309,31 +309,20 @@ class NotificationService {
     }
   }
 
-  /// Schedule a single notification at 9:00 on [fireDay]. Skips days whose
-  /// 9:00 slot is already in the past, unless [catchUpSameDay] is set and
-  /// [fireDay] is today, in which case it fires shortly from now.
+  /// Schedule a single notification at 9:00 on [fireDay]. Days whose 9:00 slot
+  /// is already in the past are skipped.
   Future<void> _scheduleOneShot({
     required int notifId,
     required String title,
     required String body,
     required DateTime fireDay,
     required AppLocalizations l10n,
-    bool catchUpSameDay = false,
   }) async {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate =
+    final scheduledDate =
         tz.TZDateTime(tz.local, fireDay.year, fireDay.month, fireDay.day, 9, 0);
 
-    if (scheduledDate.isBefore(now)) {
-      final isToday = fireDay.year == now.year &&
-          fireDay.month == now.month &&
-          fireDay.day == now.day;
-      if (catchUpSameDay && isToday) {
-        scheduledDate = now.add(const Duration(minutes: 1));
-      } else {
-        return; // don't schedule in the past
-      }
-    }
+    if (scheduledDate.isBefore(now)) return; // don't schedule in the past
 
     final payload = jsonEncode({
       'notifId': notifId,
