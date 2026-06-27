@@ -23,28 +23,27 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
   void initState() {
     super.initState();
     final instance = widget.entry.instance;
+    // For an unpaid instance, fall back to the bill's fixed amount (if any) so a
+    // bill with a set amount preloads it instead of showing an empty field.
+    final initialAmount = instance.amountPaid ?? widget.entry.bill.amount;
     _noteController = TextEditingController(
       text: instance.referenceNote ?? '',
     );
     _amountController = TextEditingController(
-      text: instance.amountPaid != null
-          ? instance.amountPaid!.toStringAsFixed(2)
-          : '',
+      text: initialAmount != null ? initialAmount.toStringAsFixed(2) : '',
     );
 
-    if (instance.isPaid) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final notifier = ref.read(markPaidProvider(widget.entry).notifier);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final notifier = ref.read(markPaidProvider(widget.entry).notifier);
+      if (initialAmount != null) notifier.setAmountPaid(initialAmount);
+      if (instance.isPaid) {
         if (instance.paidAt != null) notifier.setDate(instance.paidAt!);
         notifier.setPaymentMethod(
             PaymentMethod.fromString(instance.paymentMethod));
         notifier.setReferenceNote(instance.referenceNote ?? '');
-        if (instance.amountPaid != null) {
-          notifier.setAmountPaid(instance.amountPaid);
-        }
-      });
-    }
+      }
+    });
   }
 
   @override
