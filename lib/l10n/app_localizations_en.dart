@@ -301,6 +301,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get snooze1Hour => '1 hour';
   @override
   String get snooze3Hours => '3 hours';
+  @override
+  String reminderRescheduledFor(String time) => 'Reminder rescheduled for $time';
 
   // ── Payment methods ────────────────────────────────────────────────────────────
 

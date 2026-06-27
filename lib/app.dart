@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 import 'package:rounds/routing/app_router.dart';
@@ -19,6 +20,7 @@ class RoundsApp extends ConsumerWidget {
     );
     return MaterialApp.router(
       title: 'Rounds',
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,

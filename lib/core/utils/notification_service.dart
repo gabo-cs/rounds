@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -7,6 +8,11 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/l10n/app_localizations.dart';
+
+/// Wired into [MaterialApp.scaffoldMessengerKey] so the notification response
+/// handler — which runs outside the widget tree — can show snooze confirmations.
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 // ── Snooze action IDs ────────────────────────────────────────────────────────
 
@@ -34,13 +40,17 @@ const _kAllOffsets = [
 
 // ── Action helpers ───────────────────────────────────────────────────────────
 
+// Snooze actions bring the app to the foreground so the reschedule runs on the
+// main isolate and we can show an in-app confirmation. The cold-start case
+// (app was terminated) is picked up from getNotificationAppLaunchDetails in
+// [handleLaunchSnooze].
 List<AndroidNotificationAction> _androidActions(AppLocalizations l10n) => [
       AndroidNotificationAction(_kActionSnooze30, l10n.snooze30Min,
-          cancelNotification: true, showsUserInterface: true),
+          showsUserInterface: true),
       AndroidNotificationAction(_kActionSnooze60, l10n.snooze1Hour,
-          cancelNotification: true, showsUserInterface: true),
+          showsUserInterface: true),
       AndroidNotificationAction(_kActionSnooze180, l10n.snooze3Hours,
-          cancelNotification: true, showsUserInterface: true),
+          showsUserInterface: true),
     ];
 
 /// Shared [NotificationDetails] for every bill reminder, so the channel,
@@ -430,6 +440,21 @@ class NotificationService {
     );
   }
 
+  /// Handle a snooze action that launched the app from a terminated state.
+  /// The foreground response callback isn't invoked in that case, so the tap
+  /// has to be recovered from the launch details. Call once on startup.
+  Future<void> handleLaunchSnooze() async {
+    if (!_initialized) return;
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details == null || !details.didNotificationLaunchApp) return;
+    final response = details.notificationResponse;
+    final actionId = response?.actionId;
+    if (response == null || actionId == null || !actionId.startsWith('snooze_')) {
+      return;
+    }
+    await _scheduleSnooze(response);
+  }
+
   /// Called from the foreground notification response handler.
   Future<void> _scheduleSnooze(NotificationResponse response) async {
     final payload = response.payload;
@@ -459,6 +484,31 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: jsonEncode(data),
     );
+
+    _showSnoozeConfirmation(snoozeTime, l10n);
+  }
+
+  /// Show an in-app confirmation that the reminder was rescheduled. Runs on the
+  /// main isolate; if the widget tree isn't mounted yet (cold start), it waits
+  /// for the first frame.
+  void _showSnoozeConfirmation(tz.TZDateTime snoozeTime, AppLocalizations l10n) {
+    void show() {
+      final messenger = rootScaffoldMessengerKey.currentState;
+      final context = rootScaffoldMessengerKey.currentContext;
+      if (messenger == null || context == null) return;
+      final timeLabel = TimeOfDay.fromDateTime(snoozeTime).format(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.reminderRescheduledFor(timeLabel))),
+        );
+    }
+
+    if (rootScaffoldMessengerKey.currentState != null) {
+      show();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => show());
+    }
   }
 
   Future<void> cancelForInstance(int instanceId) async {

@@ -172,6 +172,9 @@ abstract class AppLocalizations {
   String get snooze1Hour;
   String get snooze3Hours;
 
+  /// Snooze confirmation, e.g. "Reminder rescheduled for 2:45 PM".
+  String reminderRescheduledFor(String time);
+
   // ── Payment methods ────────────────────────────────────────────────────────────
 
   String get paymentCash;

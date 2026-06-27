@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.initialize();
+  // Recover a snooze tap that cold-started the app from a terminated state.
+  await NotificationService.instance.handleLaunchSnooze();
   final prefs = await SharedPreferences.getInstance();
 
   runApp(
