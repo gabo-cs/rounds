@@ -53,12 +53,14 @@ final monthInstancesProvider =
   final instancesRepo = ref.watch(billInstancesRepositoryProvider);
   final billsRepo = ref.watch(billsRepositoryProvider);
 
-  // Auto-generate instances for the current month and future months
-  // through end of 2026. Past months show only what was explicitly recorded.
+  // Auto-generate instances for the current month and the next 12 months so
+  // browsing ahead shows the recurring bills. This horizon is relative to today
+  // (not a fixed date) so it keeps sliding forward and never expires. Past
+  // months show only what was explicitly recorded.
   final now = DateTime.now();
   final selectedDate = DateTime(selected.year, selected.month);
   final currentMonth = DateTime(now.year, now.month);
-  final cutoff = DateTime(2026, 12);
+  final cutoff = DateTime(now.year, now.month + 12);
   final shouldGenerate =
       !selectedDate.isBefore(currentMonth) && !selectedDate.isAfter(cutoff);
 
