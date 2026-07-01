@@ -25,7 +25,10 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsCard(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: SegmentedButton<ThemeMode>(
                   segments: [
                     ButtonSegment(
@@ -59,7 +62,10 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsCard(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: SegmentedButton<String>(
                   segments: [
                     ButtonSegment(
@@ -100,9 +106,7 @@ class SettingsScreen extends ConsumerWidget {
                           .requestPermission();
                       if (!granted && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l10n.notificationDenied),
-                          ),
+                          SnackBar(content: Text(l10n.notificationDenied)),
                         );
                         return;
                       }
@@ -122,33 +126,49 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: 'Uses last bill — fires in 10 seconds',
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
-                  final instances = ref.read(monthInstancesProvider).valueOrNull;
+                  final selected = ref.read(selectedMonthProvider);
+                  final instances = ref
+                      .read(monthInstancesProvider(selected))
+                      .valueOrNull;
                   final last = instances?.isNotEmpty == true
-                      ? instances!.reduce((a, b) =>
-                          a.instance.id > b.instance.id ? a : b)
+                      ? instances!.reduce(
+                          (a, b) => a.instance.id > b.instance.id ? a : b,
+                        )
                       : null;
                   if (last == null) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No bills found for this month')),
+                        const SnackBar(
+                          content: Text('No bills found for this month'),
+                        ),
                       );
                     }
                     return;
                   }
                   try {
-                    await NotificationService.instance.requestExactAlarmsPermission();
-                    final languageCode = ref.read(settingsProvider).languageCode;
-                    await NotificationService.instance.scheduleTestNotification(last, languageCode: languageCode);
+                    await NotificationService.instance
+                        .requestExactAlarmsPermission();
+                    final languageCode = ref
+                        .read(settingsProvider)
+                        .languageCode;
+                    await NotificationService.instance.scheduleTestNotification(
+                      last,
+                      languageCode: languageCode,
+                    );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Test notification for "${last.bill.name}" fires in 10 seconds')),
+                        SnackBar(
+                          content: Text(
+                            'Test notification for "${last.bill.name}" fires in 10 seconds',
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   }
                 },
@@ -197,8 +217,7 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _export(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
     try {
-      final service =
-          BackupService(ref.read(billInstancesRepositoryProvider));
+      final service = BackupService(ref.read(billInstancesRepositoryProvider));
       await service.exportAndShare();
     } catch (e) {
       if (context.mounted) {
@@ -255,12 +274,9 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.5),
-              letterSpacing: 1.2,
-            ),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -299,8 +315,7 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: Container(
         width: 36,
         height: 36,

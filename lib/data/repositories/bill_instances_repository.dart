@@ -121,30 +121,29 @@ class BillInstancesRepository {
   ) async {
     if (activeBills.isEmpty) return;
 
-    await _db.transaction(() async {
-      for (final bill in activeBills) {
-        final existing = await (_db.select(_db.billInstances)
-              ..where(
-                (i) =>
-                    i.billId.equals(bill.id) &
-                    i.year.equals(year) &
-                    i.month.equals(month),
-              ))
-            .getSingleOrNull();
+    // One query for everything already in this month, then insert only what's
+    // missing. This is the common path on every month switch, so avoid the
+    // per-bill query loop — usually nothing is missing and we return early.
+    final existing = await (_db.select(_db.billInstances)
+          ..where((i) => i.year.equals(year) & i.month.equals(month)))
+        .get();
+    final existingBillIds = existing.map((i) => i.billId).toSet();
+    final missing =
+        activeBills.where((b) => !existingBillIds.contains(b.id)).toList();
+    if (missing.isEmpty) return;
 
-        if (existing == null) {
-          final now = DateTime.now();
-          await _db.into(_db.billInstances).insert(
-                BillInstancesCompanion.insert(
-                  billId: bill.id,
-                  year: year,
-                  month: month,
-                  createdAt: now,
-                  updatedAt: now,
-                ),
-              );
-        }
-      }
+    final now = DateTime.now();
+    await _db.batch((batch) {
+      batch.insertAll(_db.billInstances, [
+        for (final bill in missing)
+          BillInstancesCompanion.insert(
+            billId: bill.id,
+            year: year,
+            month: month,
+            createdAt: now,
+            updatedAt: now,
+          ),
+      ]);
     });
   }
 

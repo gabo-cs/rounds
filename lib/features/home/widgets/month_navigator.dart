@@ -18,8 +18,10 @@ class MonthNavigator extends ConsumerWidget {
     final label = DateFormat.yMMMM().format(selectedDt);
 
     void goToCurrent() {
-      ref.read(selectedMonthProvider.notifier).state =
-          SelectedMonth(year: now.year, month: now.month);
+      ref.read(selectedMonthProvider.notifier).state = SelectedMonth(
+        year: now.year,
+        month: now.month,
+      );
     }
 
     return SizedBox(
@@ -42,9 +44,9 @@ class MonthNavigator extends ConsumerWidget {
               ),
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
@@ -70,7 +72,9 @@ class MonthNavigator extends ConsumerWidget {
                   onPressed: isCurrentMonth ? null : goToCurrent,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     textStyle: Theme.of(context).textTheme.labelSmall,

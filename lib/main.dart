@@ -10,17 +10,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.initialize();
-  // Recover a snooze tap that cold-started the app from a terminated state.
-  await NotificationService.instance.handleLaunchSnooze();
+  // Never let a notification-setup failure strand the app on the splash screen
+  // — notifications are non-essential to launching, so degrade gracefully.
+  try {
+    await NotificationService.instance.initialize();
+    // Recover a snooze tap that cold-started the app from a terminated state.
+    await NotificationService.instance.handleLaunchSnooze();
+  } catch (e, st) {
+    debugPrint('Notification init failed: $e\n$st');
+  }
   final prefs = await SharedPreferences.getInstance();
   final languageCode = prefs.getString('language_code') ?? 'en';
-
-  // The monthly "new round of bills" reminder is device-month based, so it's
-  // scheduled once here rather than tied to any month being viewed.
-  await NotificationService.instance.scheduleMonthlyKickoff(
-    languageCode: languageCode,
-  );
 
   // Share one container with the app so startup scheduling and the UI use the
   // same database instance.
@@ -30,13 +30,10 @@ void main() async {
     ],
   );
 
-  // Arm per-bill reminders for the current + next month as a sliding window
-  // anchored to today. Off the critical path so it doesn't delay first frame.
-  unawaited(scheduleUpcomingReminders(
-    billsRepo: container.read(billsRepositoryProvider),
-    instancesRepo: container.read(billInstancesRepositoryProvider),
-    languageCode: languageCode,
-  ));
+  // Kick the drift background isolate awake and start loading the shared active
+  // bills now, before the first frame's month pages need them — so the initial
+  // pages (and the first swipe's neighbour) don't wait on a cold DB spawn.
+  container.read(activeBillsProvider);
 
   runApp(
     UncontrolledProviderScope(
@@ -44,4 +41,23 @@ void main() async {
       child: const RoundsApp(),
     ),
   );
+
+  // Notification scheduling fires dozens of platform-channel calls whose
+  // responses land back on the UI isolate. Doing that during cold start floods
+  // the UI thread right when the user's first swipe wants those frames, which
+  // shows up as early stutter that clears once the calls drain. Defer it until
+  // after the first frame and a short settle — the reminders are for future
+  // days, so the delay is immaterial.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(seconds: 2), () async {
+      await NotificationService.instance.scheduleMonthlyKickoff(
+        languageCode: languageCode,
+      );
+      await scheduleUpcomingReminders(
+        billsRepo: container.read(billsRepositoryProvider),
+        instancesRepo: container.read(billInstancesRepositoryProvider),
+        languageCode: languageCode,
+      );
+    });
+  });
 }
