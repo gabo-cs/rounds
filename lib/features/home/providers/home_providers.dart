@@ -1,11 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/data/repositories/bills_repository.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 
 // --- Root providers ---
 
@@ -66,30 +63,45 @@ final monthInstancesProvider =
       !selectedDate.isBefore(currentMonth) && !selectedDate.isAfter(cutoff);
 
   if (shouldGenerate) {
+    // Generate this month's instances so they can be displayed. Notification
+    // scheduling is *not* done here — it's device-month based and handled once
+    // at startup by [scheduleUpcomingReminders], independent of what's viewed.
     final activeBills = await billsRepo.watchAllActiveBills().first;
     await instancesRepo.ensureInstancesExist(
       activeBills,
       selected.year,
       selected.month,
     );
-    // Scheduling fires dozens of platform-channel calls; keep it off the render
-    // path (unawaited) so switching months stays snappy, and skip it entirely
-    // when nothing that affects this month's notifications has changed.
-    final languageCode = ref.read(settingsProvider).languageCode;
-    unawaited(_syncMonthNotifications(
-      instancesRepo,
-      selected.year,
-      selected.month,
-      languageCode,
-    ));
   }
 
   yield* instancesRepo.watchInstancesForMonth(selected.year, selected.month);
 });
 
-// Signature of the notifications last scheduled for each month, so re-viewing a
-// month we've already handled this session does no platform work. The signature
-// changes whenever a bill is added, edited, paid, or the language switches.
+/// Schedule per-bill reminders for the current and next month, based on the
+/// device's date. Called once at startup: it's a sliding window anchored to
+/// "now", so each launch re-arms the current + upcoming month regardless of
+/// which month the user browses to.
+Future<void> scheduleUpcomingReminders({
+  required BillsRepository billsRepo,
+  required BillInstancesRepository instancesRepo,
+  required String languageCode,
+}) async {
+  final now = DateTime.now();
+  final months = <(int, int)>[
+    (now.year, now.month),
+    (now.month == 12 ? now.year + 1 : now.year, now.month == 12 ? 1 : now.month + 1),
+  ];
+
+  final activeBills = await billsRepo.watchAllActiveBills().first;
+  for (final (year, month) in months) {
+    await instancesRepo.ensureInstancesExist(activeBills, year, month);
+    await _syncMonthNotifications(instancesRepo, year, month, languageCode);
+  }
+}
+
+// Signature of the notifications last scheduled for each month, so re-arming a
+// month whose bills are unchanged does no platform work. The signature changes
+// whenever a bill is added, edited, paid, or the language switches.
 final _scheduledSignatures = <String, int>{};
 
 Future<void> _syncMonthNotifications(
