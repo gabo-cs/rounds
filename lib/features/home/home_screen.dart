@@ -23,6 +23,7 @@ class HomeScreen extends ConsumerWidget {
             const MonthNavigator(),
             Expanded(
               child: instancesAsync.when(
+                skipLoadingOnReload: true,
                 loading: () =>
                     const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(

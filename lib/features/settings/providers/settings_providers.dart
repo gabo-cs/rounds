@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/utils/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _keyThemeMode = 'theme_mode';
@@ -59,6 +60,8 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   void setLanguageCode(String code) {
     _prefs.setString(_keyLanguage, code);
     state = state.copyWith(languageCode: code);
+    // Re-emit the device-month kickoff reminder in the new language.
+    NotificationService.instance.scheduleMonthlyKickoff(languageCode: code);
   }
 }
 

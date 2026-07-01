@@ -12,6 +12,12 @@ void main() async {
   await NotificationService.instance.handleLaunchSnooze();
   final prefs = await SharedPreferences.getInstance();
 
+  // The monthly "new round of bills" reminder is device-month based, so it's
+  // scheduled once here rather than tied to any month being viewed.
+  await NotificationService.instance.scheduleMonthlyKickoff(
+    languageCode: prefs.getString('language_code') ?? 'en',
+  );
+
   runApp(
     ProviderScope(
       overrides: [

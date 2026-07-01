@@ -168,6 +168,11 @@ abstract class AppLocalizations {
   String get notificationTomorrow;
   String get notificationIn2Days;
   String get notificationBillLabel;
+
+  /// General reminder fired on the 1st of every month.
+  String get monthlyReminderTitle;
+  String get monthlyReminderBody;
+
   String get snooze30Min;
   String get snooze1Hour;
   String get snooze3Hours;

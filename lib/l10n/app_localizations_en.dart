@@ -296,6 +296,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notificationBillLabel => 'Bill';
   @override
+  String get monthlyReminderTitle => 'A new round of bills';
+  @override
+  String get monthlyReminderBody =>
+      'A new month is starting — get ready for another round of bills.';
+  @override
   String get snooze30Min => '30 min';
   @override
   String get snooze1Hour => '1 hour';

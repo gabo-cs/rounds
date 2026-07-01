@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
@@ -70,20 +72,52 @@ final monthInstancesProvider =
       selected.year,
       selected.month,
     );
-    final instances = await instancesRepo
-        .watchInstancesForMonth(selected.year, selected.month)
-        .first;
+    // Scheduling fires dozens of platform-channel calls; keep it off the render
+    // path (unawaited) so switching months stays snappy, and skip it entirely
+    // when nothing that affects this month's notifications has changed.
     final languageCode = ref.read(settingsProvider).languageCode;
-    await NotificationService.instance.scheduleForMonth(
-      instances,
+    unawaited(_syncMonthNotifications(
+      instancesRepo,
       selected.year,
       selected.month,
-      languageCode: languageCode,
-    );
+      languageCode,
+    ));
   }
 
   yield* instancesRepo.watchInstancesForMonth(selected.year, selected.month);
 });
+
+// Signature of the notifications last scheduled for each month, so re-viewing a
+// month we've already handled this session does no platform work. The signature
+// changes whenever a bill is added, edited, paid, or the language switches.
+final _scheduledSignatures = <String, int>{};
+
+Future<void> _syncMonthNotifications(
+  BillInstancesRepository instancesRepo,
+  int year,
+  int month,
+  String languageCode,
+) async {
+  final instances =
+      await instancesRepo.watchInstancesForMonth(year, month).first;
+
+  final signature = Object.hashAll([
+    languageCode,
+    for (final e in instances)
+      Object.hash(e.instance.id, e.instance.isPaid, e.bill.name,
+          e.bill.amount, e.bill.dueDayOfMonth),
+  ]);
+  final key = '$year-$month';
+  if (_scheduledSignatures[key] == signature) return;
+  _scheduledSignatures[key] = signature;
+
+  await NotificationService.instance.scheduleForMonth(
+    instances,
+    year,
+    month,
+    languageCode: languageCode,
+  );
+}
 
 // --- Month summary (derived synchronously from instances) ---
 

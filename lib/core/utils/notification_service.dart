@@ -38,6 +38,10 @@ const _kAllOffsets = [
   _kOffsetDueToday,
 ];
 
+// Fixed ID for the monthly "new round of bills" reminder. Well clear of the
+// instanceId*10+offset range and the test notification (999999).
+const _kMonthlyKickoffId = 1000001;
+
 // ── Action helpers ───────────────────────────────────────────────────────────
 
 // Snooze actions bring the app to the foreground so the reschedule runs on the
@@ -72,6 +76,16 @@ NotificationDetails _reminderDetails(
       iOS: DarwinNotificationDetails(
         categoryIdentifier: 'bill_reminder_${l10n.localeName}',
       ),
+    );
+
+/// [NotificationDetails] for general (non-bill) reminders — no snooze actions.
+NotificationDetails _generalDetails() => const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'bill_reminders_v2',
+        'Bill Reminders',
+        channelDescription: 'Reminders for upcoming bill due dates',
+      ),
+      iOS: DarwinNotificationDetails(),
     );
 
 DarwinNotificationCategory _darwinCategory(
@@ -264,6 +278,36 @@ class NotificationService {
       if (entry.instance.isPaid) continue;
       await _scheduleRemindersForInstance(entry, year, month, l10n);
     }
+  }
+
+  /// Schedule the general "a new round of bills" reminder that repeats on the
+  /// 1st of every month at 9:00 local time. This is device-month based and has
+  /// nothing to do with the month being viewed, so it's scheduled once at
+  /// startup (and again on a language change). The fixed ID means re-calling it
+  /// simply overwrites the existing schedule.
+  Future<void> scheduleMonthlyKickoff({String languageCode = 'en'}) async {
+    if (!_initialized) return;
+    final l10n =
+        languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, 1, 9, 0);
+    if (scheduledDate.isBefore(now)) {
+      final nextYear = now.month == 12 ? now.year + 1 : now.year;
+      final nextMonth = now.month == 12 ? 1 : now.month + 1;
+      scheduledDate = tz.TZDateTime(tz.local, nextYear, nextMonth, 1, 9, 0);
+    }
+
+    await _plugin.zonedSchedule(
+      _kMonthlyKickoffId,
+      l10n.monthlyReminderTitle,
+      l10n.monthlyReminderBody,
+      scheduledDate,
+      _generalDetails(),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+    );
   }
 
   Future<void> _scheduleRemindersForInstance(
