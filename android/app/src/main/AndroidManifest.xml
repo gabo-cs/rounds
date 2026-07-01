@@ -48,6 +48,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- The notification icon is referenced only by name from Dart
+             (flutter_local_notifications' getIdentifier lookup), so nothing
+             statically references it and the release build drops it as unused,
+             which crashes notification init. This meta-data is a static
+             reference that keeps the drawable in the release APK. -->
+        <meta-data
+            android:name="com.rounds.rounds.notification_icon"
+            android:resource="@drawable/ic_stat_rounds" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

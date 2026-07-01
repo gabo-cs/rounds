@@ -141,7 +141,7 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
   final plugin = FlutterLocalNotificationsPlugin();
   await plugin.initialize(
     const InitializationSettings(
-      android: AndroidInitializationSettings('@drawable/ic_stat_rounds'),
+      android: AndroidInitializationSettings('ic_stat_rounds'),
       iOS: DarwinInitializationSettings(),
     ),
   );
@@ -194,7 +194,7 @@ class NotificationService {
     }
 
     const androidSettings =
-        AndroidInitializationSettings('@drawable/ic_stat_rounds');
+        AndroidInitializationSettings('ic_stat_rounds');
     final darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
