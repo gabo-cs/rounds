@@ -66,6 +66,10 @@ abstract class AppLocalizations {
   String get billsTitle;
   String get active;
   String get archivedLabel;
+
+  /// Count of bills set up, shown under the Bills title, e.g. "12 bills".
+  String billsCount(int count);
+
   String get addFirstBillBillsSubtitle;
   String get deleteBillDialogTitle;
   String deleteBillDialogContent(String name);

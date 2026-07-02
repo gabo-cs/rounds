@@ -15,6 +15,12 @@ class BillsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
 
+    // How many bills are set up (active), shown up front under the title.
+    final activeCount = allBillsAsync.valueOrNull
+            ?.where((b) => !b.isArchived)
+            .length ??
+        0;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -39,6 +45,16 @@ class BillsScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
+                  if (activeCount > 0) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      l10n.billsCount(activeCount),
+                      style: theme.textTheme.bodyMedium!.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -58,29 +74,22 @@ class BillsScreen extends ConsumerWidget {
                   }
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                     children: [
-                      if (active.isNotEmpty) ...[
-                        _SectionHeader(
-                          label: l10n.active,
-                          count: active.length,
-                        ),
-                        const SizedBox(height: 14),
-                        ...active.map(
-                          (bill) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _BillRow(
-                              bill: bill,
-                              onTap: () =>
-                                  context.push('/bills/${bill.id}/edit'),
-                              onDelete: () =>
-                                  _confirmDelete(context, ref, bill),
-                            ),
+                      ...active.map(
+                        (bill) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _BillRow(
+                            bill: bill,
+                            onTap: () =>
+                                context.push('/bills/${bill.id}/edit'),
+                            onDelete: () =>
+                                _confirmDelete(context, ref, bill),
                           ),
                         ),
-                      ],
+                      ),
                       if (archived.isNotEmpty) ...[
-                        const SizedBox(height: 14),
+                        if (active.isNotEmpty) const SizedBox(height: 14),
                         _SectionHeader(
                           label: l10n.archivedLabel,
                           count: archived.length,

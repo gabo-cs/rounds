@@ -74,6 +74,8 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get archivedLabel => 'Archivadas';
   @override
+  String billsCount(int count) => count == 1 ? '1 factura' : '$count facturas';
+  @override
   String get addFirstBillBillsSubtitle =>
       'Agrega tus facturas recurrentes para comenzar.';
   @override
