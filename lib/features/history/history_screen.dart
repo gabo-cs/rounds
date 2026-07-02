@@ -28,8 +28,20 @@ class HistoryScreen extends ConsumerWidget {
       ),
       body: monthsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            Center(child: Text(l10n.failedToLoadHistory(e.toString()))),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text(
+              l10n.genericErrorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withValues(
+                      alpha: 0.6,
+                    ),
+              ),
+            ),
+          ),
+        ),
         data: (months) {
           if (months.isEmpty) {
             return const _EmptyHistory();

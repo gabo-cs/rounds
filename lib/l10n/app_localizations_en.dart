@@ -36,6 +36,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String itemsCount(int count) => count == 1 ? '1 item' : '$count items';
+  @override
+  String get genericErrorMessage => 'Something went wrong. Please try again.';
 
   // ── Due-date helpers ─────────────────────────────────────────────────────────
 
@@ -80,8 +82,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get addFirstBillHomeSubtitle =>
       'Add your recurring bills to start tracking your monthly payments.';
-  @override
-  String errorLoadingBills(String e) => 'Error loading bills: $e';
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
@@ -212,8 +212,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyTitle => 'History';
   @override
   String get exportDataTooltip => 'Export data';
-  @override
-  String failedToLoadHistory(String e) => 'Failed to load history: $e';
   @override
   String billsPaidOf(int paid, int total) => '$paid of $total bills paid';
   @override

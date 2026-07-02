@@ -37,6 +37,8 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String itemsCount(int count) =>
       count == 1 ? '1 elemento' : '$count elementos';
+  @override
+  String get genericErrorMessage => 'Algo salió mal. Inténtalo de nuevo.';
 
   // ── Due-date helpers ─────────────────────────────────────────────────────────
 
@@ -62,8 +64,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get addFirstBillHomeSubtitle =>
       'Agrega tus facturas recurrentes para comenzar a rastrear tus pagos mensuales.';
-  @override
-  String errorLoadingBills(String e) => 'Error al cargar facturas: $e';
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
@@ -193,8 +193,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get historyTitle => 'Historial';
   @override
   String get exportDataTooltip => 'Exportar datos';
-  @override
-  String failedToLoadHistory(String e) => 'Error al cargar historial: $e';
   @override
   String billsPaidOf(int paid, int total) => '$paid de $total facturas pagadas';
   @override

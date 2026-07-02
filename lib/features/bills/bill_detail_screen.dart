@@ -23,7 +23,8 @@ class BillDetailScreen extends ConsumerWidget {
     return billAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
+      error: (e, _) =>
+          Scaffold(body: Center(child: Text(l10n.genericErrorMessage))),
       data: (bill) {
         if (bill == null) {
           return Scaffold(
@@ -64,7 +65,7 @@ class BillDetailScreen extends ConsumerWidget {
                   child: Center(child: CircularProgressIndicator()),
                 ),
                 error: (e, _) => SliverFillRemaining(
-                  child: Center(child: Text('Error: $e')),
+                  child: Center(child: Text(l10n.genericErrorMessage)),
                 ),
                 data: (instances) {
                   if (instances.isEmpty) {

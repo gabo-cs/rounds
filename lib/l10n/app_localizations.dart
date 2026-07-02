@@ -41,6 +41,9 @@ abstract class AppLocalizations {
   String get paid;
   String itemsCount(int count);
 
+  /// Friendly fallback shown when a screen fails to load its data.
+  String get genericErrorMessage;
+
   // ── Due-date helpers ─────────────────────────────────────────────────────────
 
   /// Full label shown on a pending bill card, e.g. "Due the 15th" / "Vence el 15".
@@ -59,7 +62,6 @@ abstract class AppLocalizations {
   String get noBillsYet;
   String get addFirstBill;
   String get addFirstBillHomeSubtitle;
-  String errorLoadingBills(String e);
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
@@ -131,7 +133,6 @@ abstract class AppLocalizations {
 
   String get historyTitle;
   String get exportDataTooltip;
-  String failedToLoadHistory(String e);
   String billsPaidOf(int paid, int total);
   String get allPaid;
   String pendingCount(int count);

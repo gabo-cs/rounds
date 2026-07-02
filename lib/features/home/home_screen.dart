@@ -112,8 +112,20 @@ class _MonthPage extends ConsumerWidget {
 
     return instancesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          Center(child: Text(l10n.errorLoadingBills(e.toString()))),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            l10n.genericErrorMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withValues(
+                    alpha: 0.6,
+                  ),
+            ),
+          ),
+        ),
+      ),
       data: (instances) {
         if (instances.isEmpty) {
           return _EmptyState(onAddBill: () => context.push('/bills/new'));
