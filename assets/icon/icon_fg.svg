@@ -1,29 +1,35 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 182 182" width="1024" height="1024">
   <!--
-    Adaptive icon foreground: segments only, no background.
-    Content is in the center 100×100 area (offset 41,41) of the 182×182 canvas.
-    That puts the ring at ~55% of the total canvas, safely inside the 66/108 safe zone.
+    Adaptive icon foreground: ring + center card, no background.
+    The logo (100x100 design) is centered on the 182 canvas and scaled up to
+    ~1.44 so the ring fills the adaptive safe/visible zone instead of floating
+    small in the middle. The ring's outer edge sits at the 66dp safe-zone edge;
+    the card (key content) stays well inside.
   -->
   <defs>
     <linearGradient id="paid" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#a5b4fc"/>
       <stop offset="100%" stop-color="#6366f1"/>
     </linearGradient>
+    <filter id="cardShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1.4" stdDeviation="1.7" flood-color="#000000" flood-opacity="0.32"/>
+    </filter>
   </defs>
 
-  <!-- Paid segments (0–3) -->
-  <path d="M 91 56 A 35 35 0 0 1 114.42 64.99"
-        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-  <path d="M 121.31 73.5 A 35 35 0 0 1 125.23 98.28"
-        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-  <path d="M 121.31 108.5 A 35 35 0 0 1 101.82 124.29"
-        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-  <path d="M 91 126 A 35 35 0 0 1 67.58 117.01"
-        fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+  <g transform="translate(91 91) scale(1.44) translate(-50 -50)">
+    <!-- Ring: 6 segments (4 paid, 2 pending) -->
+    <path d="M 50 15 A 35 35 0 0 1 73.42 23.99" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 80.31 32.5 A 35 35 0 0 1 84.23 57.28" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 80.31 67.5 A 35 35 0 0 1 60.82 83.29" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 50 85 A 35 35 0 0 1 26.58 76.01" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 19.69 67.5 A 35 35 0 0 1 15.77 42.72" fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 19.69 32.5 A 35 35 0 0 1 39.18 16.71" fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
 
-  <!-- Pending segments (4–5) -->
-  <path d="M 60.69 108.5 A 35 35 0 0 1 56.77 83.72"
-        fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
-  <path d="M 60.69 73.5 A 35 35 0 0 1 80.18 57.71"
-        fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
+    <!-- Center: stacked checklist card -->
+    <g filter="url(#cardShadow)">
+      <rect x="42" y="36" width="26" height="32" rx="4.5" fill="#cbd5e1" transform="rotate(-5 55 52)"/>
+      <rect x="35.5" y="32.5" width="29" height="35" rx="5.5" fill="#ffffff" stroke="#3b82f6" stroke-width="3.5"/>
+      <path d="M 42.5 50.5 L 48 56 L 59 42.5" fill="none" stroke="#3b82f6" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
 </svg>

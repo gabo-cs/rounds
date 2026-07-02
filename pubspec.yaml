@@ -56,6 +56,10 @@ flutter_launcher_icons:
   adaptive_icon_background: "#0a0f1e"
   adaptive_icon_foreground: "assets/icon/icon_fg.png"
   min_sdk_android: 21
+  # iOS icons must be opaque (App Store rejects alpha); flatten onto the dark
+  # background, which matches the icon's edges so the corners stay seamless.
+  remove_alpha_ios: true
+  background_color_ios: "#0a0f1e"
 
 flutter:
   uses-material-design: true
