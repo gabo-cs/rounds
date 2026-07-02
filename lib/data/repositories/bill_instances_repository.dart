@@ -133,17 +133,26 @@ class BillInstancesRepository {
     if (missing.isEmpty) return;
 
     final now = DateTime.now();
+    // insertOrIgnore so this is race-safe: several callers (a re-running month
+    // provider, its previous in-flight run, the startup warm-up) can all read
+    // "missing" for the same month at once and try to insert the same row. The
+    // UNIQUE(bill_id, year, month) constraint makes the losers no-ops instead
+    // of throwing.
     await _db.batch((batch) {
-      batch.insertAll(_db.billInstances, [
-        for (final bill in missing)
-          BillInstancesCompanion.insert(
-            billId: bill.id,
-            year: year,
-            month: month,
-            createdAt: now,
-            updatedAt: now,
-          ),
-      ]);
+      batch.insertAll(
+        _db.billInstances,
+        [
+          for (final bill in missing)
+            BillInstancesCompanion.insert(
+              billId: bill.id,
+              year: year,
+              month: month,
+              createdAt: now,
+              updatedAt: now,
+            ),
+        ],
+        mode: InsertMode.insertOrIgnore,
+      );
     });
   }
 
