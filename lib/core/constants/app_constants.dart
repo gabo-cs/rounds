@@ -13,6 +13,4 @@ abstract class AppConstants {
     'Transportation',
     'Other',
   ];
-
-  static const String customCategorysentinel = 'custom';
 }

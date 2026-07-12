@@ -153,25 +153,3 @@ Future<void> _syncMonthNotifications(
     languageCode: languageCode,
   );
 }
-
-// --- Month summary (derived synchronously from instances) ---
-
-final monthSummaryProvider = Provider.autoDispose<MonthSummary?>((ref) {
-  final selected = ref.watch(selectedMonthProvider);
-  final instancesAsync = ref.watch(monthInstancesProvider(selected));
-  return instancesAsync.whenOrNull(
-    data: (instances) {
-      if (instances.isEmpty) return null;
-      int pendingCount = 0;
-      for (final entry in instances) {
-        if (!entry.instance.isPaid) pendingCount++;
-      }
-      return MonthSummary(
-        year: selected.year,
-        month: selected.month,
-        pendingCount: pendingCount,
-        totalCount: instances.length,
-      );
-    },
-  );
-});
