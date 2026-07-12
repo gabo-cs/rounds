@@ -21,6 +21,7 @@ void main() async {
   }
   final prefs = await SharedPreferences.getInstance();
   final languageCode = prefs.getString('language_code') ?? 'en';
+  final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
 
   // Share one container with the app so startup scheduling and the UI use the
   // same database instance.
@@ -49,6 +50,9 @@ void main() async {
   // after the first frame and a short settle — the reminders are for future
   // days, so the delay is immaterial.
   WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Respect the in-app toggle: scheduling here would silently re-arm
+    // reminders the user turned off.
+    if (!notificationsEnabled) return;
     Future.delayed(const Duration(seconds: 2), () async {
       await NotificationService.instance.scheduleMonthlyKickoff(
         languageCode: languageCode,

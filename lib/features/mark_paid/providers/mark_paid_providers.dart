@@ -45,12 +45,17 @@ class MarkPaidState {
 }
 
 class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
-  MarkPaidNotifier(this._repo, this._entry, this._languageCode)
-      : super(MarkPaidState(paidAt: DateTime.now()));
+  MarkPaidNotifier(
+    this._repo,
+    this._entry,
+    this._languageCode,
+    this._notificationsEnabled,
+  ) : super(MarkPaidState(paidAt: DateTime.now()));
 
   final BillInstancesRepository _repo;
   final BillInstanceWithBill _entry;
   final String _languageCode;
+  final bool _notificationsEnabled;
   int get _instanceId => _entry.instance.id;
 
   void setDate(DateTime date) => state = state.copyWith(paidAt: date);
@@ -98,7 +103,8 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
         _entry.bill.dueDayOfMonth,
       );
       final today = DateTime.now();
-      if (dueDate.isBefore(DateTime(today.year, today.month, today.day))) {
+      if (_notificationsEnabled &&
+          dueDate.isBefore(DateTime(today.year, today.month, today.day))) {
         await NotificationService.instance.scheduleOverdueReminderForInstance(
           _entry,
           languageCode: _languageCode,
@@ -118,9 +124,11 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
 final markPaidProvider = StateNotifierProvider.family
     .autoDispose<MarkPaidNotifier, MarkPaidState, BillInstanceWithBill>(
         (ref, entry) {
+  final settings = ref.read(settingsProvider);
   return MarkPaidNotifier(
     ref.watch(billInstancesRepositoryProvider),
     entry,
-    ref.read(settingsProvider).languageCode,
+    settings.languageCode,
+    settings.notificationsEnabled,
   );
 });

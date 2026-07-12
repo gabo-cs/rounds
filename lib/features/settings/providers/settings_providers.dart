@@ -61,7 +61,9 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     _prefs.setString(_keyLanguage, code);
     state = state.copyWith(languageCode: code);
     // Re-emit the device-month kickoff reminder in the new language.
-    NotificationService.instance.scheduleMonthlyKickoff(languageCode: code);
+    if (state.notificationsEnabled) {
+      NotificationService.instance.scheduleMonthlyKickoff(languageCode: code);
+    }
   }
 }
 

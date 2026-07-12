@@ -121,6 +121,11 @@ Future<void> scheduleUpcomingReminders({
 // whenever a bill is added, edited, paid, or the language switches.
 final _scheduledSignatures = <String, int>{};
 
+/// Forget which months are armed. Needed after cancelAll(): the DB state (and
+/// thus the signatures) is unchanged, so without this a later scheduling pass
+/// would be skipped as "already done" and the cancelled reminders never return.
+void resetNotificationSignatures() => _scheduledSignatures.clear();
+
 Future<void> _syncMonthNotifications(
   BillInstancesRepository instancesRepo,
   int year,

@@ -114,8 +114,24 @@ class SettingsScreen extends ConsumerWidget {
                           .requestExactAlarmsPermission();
                     } else {
                       await NotificationService.instance.cancelAll();
+                      resetNotificationSignatures();
                     }
                     notifier.setNotificationsEnabled(enabled);
+                    if (enabled) {
+                      // Re-arm now — startup scheduling only runs on launch, so
+                      // without this the toggle wouldn't take effect until the
+                      // next app start.
+                      final languageCode =
+                          ref.read(settingsProvider).languageCode;
+                      await NotificationService.instance
+                          .scheduleMonthlyKickoff(languageCode: languageCode);
+                      await scheduleUpcomingReminders(
+                        billsRepo: ref.read(billsRepositoryProvider),
+                        instancesRepo:
+                            ref.read(billInstancesRepositoryProvider),
+                        languageCode: languageCode,
+                      );
+                    }
                   },
                 ),
               ),
