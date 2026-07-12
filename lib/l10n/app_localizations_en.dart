@@ -82,13 +82,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get addFirstBillHomeSubtitle =>
       'Add your recurring bills to start tracking your monthly payments.';
+  @override
+  String get todayButton => 'Today';
+  @override
+  String get previousMonthTooltip => 'Previous month';
+  @override
+  String get nextMonthTooltip => 'Next month';
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
   @override
   String get billsTitle => 'Bills';
-  @override
-  String get active => 'Active';
   @override
   String get archivedLabel => 'Archived';
   @override
@@ -284,6 +288,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get englishLanguage => 'English';
   @override
   String get spanishLanguage => 'Spanish';
+  @override
+  String get testNotificationTitle => 'Send test notification';
+  @override
+  String get testNotificationSubtitle => 'Uses last bill — fires in 10 seconds';
+  @override
+  String get noBillsThisMonth => 'No bills found for this month';
+  @override
+  String testNotificationScheduled(String name) =>
+      'Test notification for "$name" fires in 10 seconds';
+  @override
+  String testNotificationFailed(String e) => 'Error: $e';
 
   // ── Notifications ──────────────────────────────────────────────────────────────
 

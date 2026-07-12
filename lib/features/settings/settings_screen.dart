@@ -122,8 +122,8 @@ class SettingsScreen extends ConsumerWidget {
               const Divider(height: 1, indent: 64, endIndent: 0),
               _SettingsTile(
                 icon: Icons.bug_report_outlined,
-                title: 'Send test notification',
-                subtitle: 'Uses last bill — fires in 10 seconds',
+                title: l10n.testNotificationTitle,
+                subtitle: l10n.testNotificationSubtitle,
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   final selected = ref.read(selectedMonthProvider);
@@ -138,9 +138,7 @@ class SettingsScreen extends ConsumerWidget {
                   if (last == null) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('No bills found for this month'),
-                        ),
+                        SnackBar(content: Text(l10n.noBillsThisMonth)),
                       );
                     }
                     return;
@@ -159,16 +157,18 @@ class SettingsScreen extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            'Test notification for "${last.bill.name}" fires in 10 seconds',
+                            l10n.testNotificationScheduled(last.bill.name),
                           ),
                         ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(l10n.testNotificationFailed('$e')),
+                        ),
+                      );
                     }
                   }
                 },

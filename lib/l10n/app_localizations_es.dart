@@ -64,13 +64,17 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get addFirstBillHomeSubtitle =>
       'Agrega tus facturas recurrentes para comenzar a rastrear tus pagos mensuales.';
+  @override
+  String get todayButton => 'Hoy';
+  @override
+  String get previousMonthTooltip => 'Mes anterior';
+  @override
+  String get nextMonthTooltip => 'Mes siguiente';
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
   @override
   String get billsTitle => 'Facturas';
-  @override
-  String get active => 'Activas';
   @override
   String get archivedLabel => 'Archivadas';
   @override
@@ -265,6 +269,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String get englishLanguage => 'Inglés';
   @override
   String get spanishLanguage => 'Español';
+  @override
+  String get testNotificationTitle => 'Enviar notificación de prueba';
+  @override
+  String get testNotificationSubtitle =>
+      'Usa la última factura — se envía en 10 segundos';
+  @override
+  String get noBillsThisMonth => 'No hay facturas para este mes';
+  @override
+  String testNotificationScheduled(String name) =>
+      'La notificación de prueba para "$name" se envía en 10 segundos';
+  @override
+  String testNotificationFailed(String e) => 'Error: $e';
 
   // ── Notifications ──────────────────────────────────────────────────────────────
 

@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:rounds/core/extensions/date_extensions.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/l10n/app_localizations.dart';
 
 class MonthNavigator extends ConsumerWidget {
   const MonthNavigator({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final selected = ref.watch(selectedMonthProvider);
     final now = DateTime.now();
     final selectedDt = DateTime(selected.year, selected.month);
@@ -35,7 +37,7 @@ class MonthNavigator extends ConsumerWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
-                tooltip: 'Previous month',
+                tooltip: l10n.previousMonthTooltip,
                 onPressed: () {
                   final prev = selectedDt.previousMonth;
                   ref.read(selectedMonthProvider.notifier).state =
@@ -50,7 +52,7 @@ class MonthNavigator extends ConsumerWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
-                tooltip: 'Next month',
+                tooltip: l10n.nextMonthTooltip,
                 onPressed: () {
                   final next = selectedDt.nextMonth;
                   ref.read(selectedMonthProvider.notifier).state =
@@ -80,7 +82,7 @@ class MonthNavigator extends ConsumerWidget {
                     textStyle: Theme.of(context).textTheme.labelSmall,
                     foregroundColor: Theme.of(context).colorScheme.primary,
                   ),
-                  child: const Text('Today'),
+                  child: Text(l10n.todayButton),
                 ),
               ),
             ),

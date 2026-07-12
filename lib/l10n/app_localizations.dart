@@ -62,11 +62,13 @@ abstract class AppLocalizations {
   String get noBillsYet;
   String get addFirstBill;
   String get addFirstBillHomeSubtitle;
+  String get todayButton;
+  String get previousMonthTooltip;
+  String get nextMonthTooltip;
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
   String get billsTitle;
-  String get active;
   String get archivedLabel;
 
   /// Count of bills set up, shown under the Bills title, e.g. "12 bills".
@@ -166,6 +168,11 @@ abstract class AppLocalizations {
   String get languageSection;
   String get englishLanguage;
   String get spanishLanguage;
+  String get testNotificationTitle;
+  String get testNotificationSubtitle;
+  String get noBillsThisMonth;
+  String testNotificationScheduled(String name);
+  String testNotificationFailed(String e);
 
   // ── Notifications ──────────────────────────────────────────────────────────────
 
