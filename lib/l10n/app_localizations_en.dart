@@ -279,9 +279,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get importAndReplaceButton => 'Import & Replace';
   @override
-  String get importInstructions =>
-      'To import, share your backup JSON file to Rounds from '
-      'your file manager or another app.';
+  String get importSuccess => 'Data imported successfully';
+  @override
+  String get importErrorInvalidFile =>
+      'The file is not a valid Rounds backup.';
+  @override
+  String get importErrorUnsupportedVersion =>
+      'This backup was created by a newer version of Rounds.';
+  @override
+  String get importErrorReadFailed => 'Could not read the file.';
+  @override
+  String get importErrorGeneric => 'Import failed.';
   @override
   String get languageSection => 'Language';
   @override

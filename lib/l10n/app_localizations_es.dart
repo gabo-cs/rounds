@@ -260,9 +260,17 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get importAndReplaceButton => 'Importar y reemplazar';
   @override
-  String get importInstructions =>
-      'Para importar, comparte tu archivo JSON de respaldo a Rounds '
-      'desde tu gestor de archivos u otra app.';
+  String get importSuccess => 'Datos importados correctamente';
+  @override
+  String get importErrorInvalidFile =>
+      'El archivo no es una copia de seguridad válida de Rounds.';
+  @override
+  String get importErrorUnsupportedVersion =>
+      'Esta copia de seguridad fue creada por una versión más reciente de Rounds.';
+  @override
+  String get importErrorReadFailed => 'No se pudo leer el archivo.';
+  @override
+  String get importErrorGeneric => 'Error al importar.';
   @override
   String get languageSection => 'Idioma';
   @override

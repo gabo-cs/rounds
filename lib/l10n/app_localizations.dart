@@ -164,7 +164,11 @@ abstract class AppLocalizations {
   String get importDataDialogTitle;
   String get importDataDialogContent;
   String get importAndReplaceButton;
-  String get importInstructions;
+  String get importSuccess;
+  String get importErrorInvalidFile;
+  String get importErrorUnsupportedVersion;
+  String get importErrorReadFailed;
+  String get importErrorGeneric;
   String get languageSection;
   String get englishLanguage;
   String get spanishLanguage;

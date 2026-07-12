@@ -28,9 +28,10 @@ dependencies:
   timezone: ^0.9.4
   flutter_timezone: ^3.0.0
 
-  # Export / share
+  # Backup: export / share / import
   share_plus: ^10.1.4
   path_provider: ^2.1.5
+  file_picker: ^11.0.2
 
   # Utilities
   intl: ^0.20.1

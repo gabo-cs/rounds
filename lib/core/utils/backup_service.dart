@@ -10,12 +10,17 @@ import 'package:rounds/data/repositories/bill_instances_repository.dart';
 
 const _backupVersion = 1;
 
+/// Why an import failed. Typed (rather than message strings) so the UI can
+/// show a localized message.
+enum ImportError { invalidFile, unsupportedVersion, readFailed, unknown }
+
 class BackupService {
   BackupService(this._repo);
 
   final BillInstancesRepository _repo;
 
-  Future<void> exportAndShare() async {
+  /// Serializes the entire database to the versioned backup JSON.
+  Future<String> buildBackupJson() async {
     final bills = await _repo.getAllBills();
     final instances = await _repo.getAllInstances();
 
@@ -26,7 +31,11 @@ class BackupService {
       'billInstances': instances.map(_instanceToJson).toList(),
     };
 
-    final json = const JsonEncoder.withIndent('  ').convert(payload);
+    return const JsonEncoder.withIndent('  ').convert(payload);
+  }
+
+  Future<void> exportAndShare() async {
+    final json = await buildBackupJson();
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/rounds_backup_${_timestamp()}.json');
     await file.writeAsString(json);
@@ -37,26 +46,25 @@ class BackupService {
     );
   }
 
-  /// Returns null on success, or an error message string.
-  Future<String?> importFromFile(String filePath) async {
+  /// Returns null on success, or the reason the import failed.
+  Future<ImportError?> importFromFile(String filePath) async {
     try {
       final content = await File(filePath).readAsString();
       final dynamic decoded = jsonDecode(content);
 
       if (decoded is! Map<String, dynamic>) {
-        return 'Invalid backup file format.';
+        return ImportError.invalidFile;
       }
 
       final version = decoded['version'] as int?;
-      if (version == null || version > _backupVersion) {
-        return 'Unsupported backup version.';
-      }
+      if (version == null) return ImportError.invalidFile;
+      if (version > _backupVersion) return ImportError.unsupportedVersion;
 
       final rawBills = decoded['bills'] as List<dynamic>?;
       final rawInstances = decoded['billInstances'] as List<dynamic>?;
 
       if (rawBills == null || rawInstances == null) {
-        return 'Backup file is missing required data.';
+        return ImportError.invalidFile;
       }
 
       final bills = rawBills
@@ -71,11 +79,15 @@ class BackupService {
       await _repo.replaceAllData(bills: bills, instances: instances);
       return null;
     } on FormatException {
-      return 'Could not parse backup file — invalid JSON.';
-    } on FileSystemException catch (e) {
-      return 'Could not read file: ${e.message}';
-    } catch (e) {
-      return 'Import failed: $e';
+      // Not JSON, or a malformed date string.
+      return ImportError.invalidFile;
+    } on TypeError {
+      // JSON with the wrong shape (fields of unexpected types).
+      return ImportError.invalidFile;
+    } on FileSystemException {
+      return ImportError.readFailed;
+    } catch (_) {
+      return ImportError.unknown;
     }
   }
 

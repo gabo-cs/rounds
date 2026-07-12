@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/backup_service.dart';
@@ -269,11 +270,41 @@ class SettingsScreen extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    final path = result?.files.single.path;
+    if (path == null || !context.mounted) return;
+
+    final service = BackupService(ref.read(billInstancesRepositoryProvider));
+    final error = await service.importFromFile(path);
+
+    if (error == null) {
+      // Reminders scheduled before the import reference instance IDs from the
+      // replaced data — rebuild the schedule from scratch.
+      await NotificationService.instance.cancelAll();
+      resetNotificationSignatures();
+      final settings = ref.read(settingsProvider);
+      if (settings.notificationsEnabled) {
+        await scheduleUpcomingReminders(
+          billsRepo: ref.read(billsRepositoryProvider),
+          instancesRepo: ref.read(billInstancesRepositoryProvider),
+          languageCode: settings.languageCode,
+        );
+      }
+    }
+
+    if (!context.mounted) return;
+    final message = switch (error) {
+      null => l10n.importSuccess,
+      ImportError.invalidFile => l10n.importErrorInvalidFile,
+      ImportError.unsupportedVersion => l10n.importErrorUnsupportedVersion,
+      ImportError.readFailed => l10n.importErrorReadFailed,
+      ImportError.unknown => l10n.importErrorGeneric,
+    };
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l10n.importInstructions),
-        duration: const Duration(seconds: 5),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 }
