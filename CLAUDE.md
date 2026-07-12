@@ -32,8 +32,8 @@ truth — if this file and the code disagree, the code wins; update this file.
 
 ## Testing policy
 
-- The suite is being built up from zero (`test/` is currently empty). **New features
-  and bug fixes should come with tests.**
+- The suite is small and being built up. **New features and bug fixes should come
+  with tests.**
 - Priorities: repository logic against a real in-memory DB via
   `AppDatabase.forTesting(NativeDatabase.memory())`, and unit tests for tricky pure
   logic — date math (`date_extensions.dart`), notification-ID mapping, backup
@@ -128,9 +128,8 @@ only promote to `widgets/` (feature) or `core/widgets/` (cross-feature) on actua
 ## State management — Riverpod, manual only
 
 **Hand-written providers are the convention. Do not introduce riverpod codegen**
-(`@riverpod` annotations). The generator packages in dev_dependencies are unused and
-slated for removal. `build_runner` exists solely for Drift:
-`dart run build_runner build` after touching tables.
+(`@riverpod` annotations) or re-add the generator packages. `build_runner` exists
+solely for Drift: `dart run build_runner build` after touching tables.
 
 Patterns in use:
 - **Root wiring** lives in `features/home/providers/home_providers.dart`:
@@ -243,27 +242,23 @@ pager listens and animates ≤1-step moves, jumps otherwise). Keep that unidirec
 ## Backup / restore
 
 `core/utils/BackupService`: export = versioned JSON (`_backupVersion = 1`, UTC ISO
-timestamps, explicit hand-written toJson/fromJson per table — no codegen) written to
-temp dir and handed to `share_plus`. Import = **full replace** in one transaction,
-preserving original IDs (required — notification IDs derive from instance IDs).
+timestamps, explicit hand-written toJson/fromJson per table — no codegen) built by
+`buildBackupJson()` (kept separate from sharing so it's testable), written to temp
+dir and handed to `share_plus`. Import = user picks the JSON via `file_picker`, then
+**full replace** in one transaction, preserving original IDs (required — notification
+IDs derive from instance IDs); afterwards the notification schedule is rebuilt, since
+the old one references replaced instances. `importFromFile` returns typed
+`ImportError` values (never message strings) so the UI can localize failures.
 Bump `_backupVersion` and keep old versions importable whenever the schema grows.
+Round-trip and error paths are covered in `test/backup_service_test.dart`.
 
 ## Known debt & pitfalls (as of 2026-07)
 
-- **Import is not actually wired**: `BackupService.importFromFile` has no caller;
-  the Settings import flow only shows a snackbar telling the user to share the file
-  to the app, but `AndroidManifest.xml` has no intent-filter to receive files.
-  Finishing this = intent-filter + entry-point handling + calling `importFromFile`.
-- **Notifications toggle is cosmetic**: disabling it cancels scheduled notifications,
-  but `main.dart` / `scheduleUpcomingReminders` never check
-  `settings.notificationsEnabled`, so everything re-arms on next launch. Bug.
-- **Dead code**: `MonthHeader` widget, `monthSummaryProvider`, and
-  `AppConstants.customCategorysentinel` (typo'd) are unused.
-- **Removable deps**: `uuid`, `riverpod_annotation`, `riverpod_generator`; and
-  `custom_lint`/`riverpod_lint` are installed but not enabled in
-  `analysis_options.yaml` (either enable the plugin or drop them).
-- **Stray hardcoded strings** bypassing l10n: the test-notification tile in Settings,
-  the "Today" button and month-nav tooltips in `month_navigator.dart`.
+- **Notifications toggle**: every scheduling path (startup, language change,
+  undo-payment, import) must check `settings.notificationsEnabled` — they all do
+  now; keep it that way when adding new scheduling paths. After `cancelAll()`,
+  call `resetNotificationSignatures()` (in `home_providers.dart`) or the
+  signature cache will skip the next re-arm as "already done".
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
 - Amounts are `double` + hardcoded `$` formatting; fine for a personal app, know it
   before building anything money-math heavy.
