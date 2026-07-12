@@ -1,12 +1,12 @@
 # CLAUDE.md
 
-Guidance for Claude Code sessions in this repository. Part 1 is how Gabo likes to work;
-Part 2 is the engineering documentation for the app. Treat the codebase as the source of
+Guidance for Claude Code sessions in this repository. Part 1 is how the maintainer
+likes to work; Part 2 is the engineering documentation for the app. Treat the codebase as the source of
 truth — if this file and the code disagree, the code wins; update this file.
 
 ---
 
-# Part 1 — Working with Gabo
+# Part 1 — Working in this repo
 
 ## Workflow
 
@@ -18,7 +18,7 @@ truth — if this file and the code disagree, the code wins; update this file.
   hardcoded string, a real bug), fix them proactively — but as **separate commits**
   from the main task, so each commit stays reviewable.
 - **Verification before commit:** `flutter analyze` and `flutter test` must pass.
-  On-device testing is Gabo's job; don't try to launch emulators.
+  On-device testing is the maintainer's job; don't try to launch emulators.
 
 ## Git
 
@@ -66,7 +66,7 @@ creep in that direction.
 Fully offline by design: no accounts, no network, no analytics. SQLite on device,
 JSON export/import as the only data exit/entry.
 
-**The app is installed on Gabo's own device with real data.** Consequences:
+**The app is installed on real devices with real data.** Consequences:
 - Every Drift schema change needs a schema-version bump and a hand-written,
   non-destructive migration in `app_database.dart`. Never wipe or regenerate the DB.
 - Notification-ID layout changes must stay compatible with already-scheduled
@@ -270,6 +270,6 @@ flutter pub get
 dart run build_runner build          # only needed after touching Drift tables
 flutter analyze                      # must be clean before commit
 flutter test                         # must pass before commit
-flutter run                          # Gabo runs on-device himself
+flutter run                          # on-device testing is done manually
 dart run flutter_launcher_icons      # after changing assets/icon/*
 ```
