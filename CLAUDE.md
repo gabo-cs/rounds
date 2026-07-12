@@ -18,6 +18,7 @@ truth — if this file and the code disagree, the code wins; update this file.
   hardcoded string, a real bug), fix them proactively — but as **separate commits**
   from the main task, so each commit stays reviewable.
 - **Verification before commit:** `flutter analyze` and `flutter test` must pass.
+  CI (`.github/workflows/ci.yml`) enforces the same two checks on push and PRs.
   On-device testing is the maintainer's job; don't try to launch emulators.
 
 ## Git
@@ -38,6 +39,15 @@ truth — if this file and the code disagree, the code wins; update this file.
   `AppDatabase.forTesting(NativeDatabase.memory())`, and unit tests for tricky pure
   logic — date math (`date_extensions.dart`), notification-ID mapping, backup
   serialization round-trips, month↔page-index mapping in `home_screen.dart`.
+- **Inject time in new logic.** The riskiest bugs here are date-boundary ones
+  (overdue cutoffs, month rollover, December edges), and inline `DateTime.now()`
+  calls make them untestable. New date-sensitive functions take a `DateTime now`
+  parameter (defaulted to `DateTime.now()`); migrate existing call sites
+  opportunistically when touching them.
+- **Every `schemaVersion` bump ships with a migration test**: build the previous
+  schema, seed representative data, run the upgrade, verify nothing was lost or
+  mangled. Real devices carry real data; migrations are the highest-value tests
+  in this repo.
 - Widget tests are welcome but secondary.
 
 ## Code style
@@ -67,8 +77,9 @@ Fully offline by design: no accounts, no network, no analytics. SQLite on device
 JSON export/import as the only data exit/entry.
 
 **The app is installed on real devices with real data.** Consequences:
-- Every Drift schema change needs a schema-version bump and a hand-written,
-  non-destructive migration in `app_database.dart`. Never wipe or regenerate the DB.
+- Every Drift schema change needs a schema-version bump, a hand-written,
+  non-destructive migration in `app_database.dart`, and a migration test (see
+  Testing policy). Never wipe or regenerate the DB.
 - Notification-ID layout changes must stay compatible with already-scheduled
   notifications (see Notifications below).
 - Backup JSON must stay readable by version checks (`_backupVersion` in
@@ -132,9 +143,13 @@ only promote to `widgets/` (feature) or `core/widgets/` (cross-feature) on actua
 solely for Drift: `dart run build_runner build` after touching tables.
 
 Patterns in use:
-- **Root wiring** lives in `features/home/providers/home_providers.dart`:
-  `appDatabaseProvider` → `billsRepositoryProvider` / `billInstancesRepositoryProvider`.
-  New repositories hang off `appDatabaseProvider` the same way.
+- **Root wiring** currently lives in `features/home/providers/home_providers.dart`
+  (`appDatabaseProvider` → `billsRepositoryProvider` /
+  `billInstancesRepositoryProvider`) — a historical accident, not a convention.
+  **Cross-feature providers never go in a feature folder**: put new ones in
+  `lib/data/providers.dart`, and move the existing root providers there the next
+  time a change touches them. New repositories hang off `appDatabaseProvider`
+  the same way.
 - **Reads are streams**: repositories expose `watch*()` Drift streams; providers wrap
   them in `StreamProvider`. UI updates reactively; there are no manual refresh calls.
 - **Parametrized queries**: `StreamProvider.family` keyed by a value-equal type
@@ -144,6 +159,16 @@ Patterns in use:
   never watch inside callbacks.
 - **Form/sheet state**: `StateNotifier` + immutable state class with `copyWith`
   (including `clearX` flags for nullable fields) — see `mark_paid_providers.dart`.
+- **Multi-step mutations belong in a notifier**, following the mark_paid pattern:
+  anything beyond a single repo call (repo write + notification changes, etc.) is
+  orchestrated by a `StateNotifier`, not a widget callback. `bill_form_screen._save`
+  and the settings notifications toggle are legacy counterexamples — don't copy
+  them; migrate them when touched.
+- **Services are accessed through providers in new code.** `NotificationService`
+  is a singleton reached via `NotificationService.instance` today, which is why
+  its callers can't be unit-tested. New code takes it from a
+  `notificationServiceProvider` (create it wrapping the singleton on first need)
+  so tests can override it; any new service gets a provider from day one.
 - **Screen-private providers are fine** for single-screen queries
   (`_allBillsProvider` in `bills_screen.dart`).
 - Settings: `SettingsNotifier(StateNotifier<AppSettings>)` over SharedPreferences;
@@ -262,6 +287,8 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
 - Amounts are `double` + hardcoded `$` formatting; fine for a personal app, know it
   before building anything money-math heavy.
+- **Version lives in two places**: `version:` in `pubspec.yaml` and the hardcoded
+  `appVersionLabel` in both l10n implementations. Bump them together, always.
 
 ## Command reference
 
