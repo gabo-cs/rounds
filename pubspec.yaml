@@ -19,7 +19,6 @@ dependencies:
 
   # State management
   flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
 
   # Navigation
   go_router: ^14.8.1
@@ -35,7 +34,6 @@ dependencies:
 
   # Utilities
   intl: ^0.20.1
-  uuid: ^4.5.1
   shared_preferences: ^2.5.4
 
 dev_dependencies:
@@ -44,9 +42,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.22.1
   build_runner: ^2.4.15
-  riverpod_generator: ^2.6.1
-  custom_lint: ^0.7.5
-  riverpod_lint: ^2.6.1
   flutter_launcher_icons: ^0.14.3
 
 flutter_launcher_icons:
