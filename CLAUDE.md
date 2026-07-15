@@ -208,18 +208,33 @@ All logic in `core/utils/notification_service.dart` (singleton,
   with `instanceId * 10 + n`.
 - **Scheduling model**: proactive and startup-driven. `scheduleUpcomingReminders`
   (in `home_providers.dart`) arms current + next month at every launch — a sliding
-  window anchored to the device date, independent of which month the user browses.
-  A per-month signature hash skips platform work when nothing changed. Reminders are
-  scheduled from the due date forward so they fire even if the app is never reopened.
+  window anchored to the device date, independent of which month the user browses —
+  and then re-arms the daily overdue reminder for every unpaid, non-archived
+  instance from *past* months, so nagging survives month rollover and lost alarms
+  (force-stop, OEM battery killers). A per-month signature hash skips platform work
+  when nothing changed. Reminders are scheduled from the due date forward so they
+  fire even if the app is never reopened. Archived bills are never scheduled.
 - **Reminder ladder** per unpaid instance, all at 9:00 local: −2d, −1d, due day,
-  +1d overdue; if already overdue, a daily repeating reminder instead.
+  then a **daily repeating overdue reminder until paid**. On Android the daily
+  series is armed proactively (first fire = due date + 1, repeats via
+  `DateTimeComponents.time`); on iOS repeating triggers ignore the start date and
+  would nag before the due date, so iOS gets a single due+1 ping and the daily
+  repeat is armed by the next launch's scheduling pass.
+- **Two channels**: regular reminders on `bill_reminders_v2` (default importance);
+  overdue reminders on `overdue_alerts_v1` (high importance, heads-up). Importance
+  is per-channel on Android 8+ — escalation means a different channel, never an
+  importance override on an existing one. Snooze payloads carry an `overdue` flag
+  so a snoozed overdue reminder is rescheduled on the right channel.
 - **Snooze**: notification actions carry a JSON payload (`notifId`, `title`, `body`,
   `langCode`) that must be self-contained — the background isolate handler
   (`@pragma('vm:entry-point')`) re-initializes timezone + plugin from scratch and can
   touch nothing from the app's state. Cold-start snoozes are recovered via
   `getNotificationAppLaunchDetails`.
-- Mark-paid cancels the instance's IDs; undoing a payment on a past-due bill
-  re-arms the daily overdue reminder.
+- **Anything that retires a bill or instance must cancel its notifications**:
+  mark-paid cancels the instance's IDs; deleting a bill cancels all its instances'
+  IDs (grab them *before* the delete removes the rows); archiving does the same.
+  Undoing a payment on a past-due bill re-arms the daily overdue reminder;
+  unarchiving relies on the next scheduling pass.
 - **Release-build trap**: `ic_stat_rounds` is only referenced by name from Dart, so
   R8 would strip it — the `<meta-data>` entry in `AndroidManifest.xml` exists solely
   to pin it. Any new drawable referenced only from Dart needs the same treatment.
