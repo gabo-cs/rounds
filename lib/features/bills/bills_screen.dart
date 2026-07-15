@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
@@ -163,7 +164,16 @@ class BillsScreen extends ConsumerWidget {
     );
 
     if (confirmed == true && context.mounted) {
+      // Grab the instance IDs before the delete removes them — they're needed
+      // to cancel the scheduled reminders, which would otherwise keep firing
+      // (the overdue one daily, forever) for a bill that no longer exists.
+      final instanceIds = await ref
+          .read(billInstancesRepositoryProvider)
+          .getInstanceIdsForBill(bill.id);
       await ref.read(billsRepositoryProvider).deleteBill(bill.id);
+      for (final id in instanceIds) {
+        await NotificationService.instance.cancelForInstance(id);
+      }
     }
   }
 }

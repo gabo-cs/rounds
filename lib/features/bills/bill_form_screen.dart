@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/core/constants/app_constants.dart';
+import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
@@ -145,6 +146,14 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     );
     if (confirmed == true && mounted) {
       await ref.read(billsRepositoryProvider).archiveBill(bill.id);
+      // A retired bill shouldn't keep nagging — cancel its scheduled
+      // reminders. (Unarchiving re-arms them on the next scheduling pass.)
+      final instanceIds = await ref
+          .read(billInstancesRepositoryProvider)
+          .getInstanceIdsForBill(bill.id);
+      for (final id in instanceIds) {
+        await NotificationService.instance.cancelForInstance(id);
+      }
       if (mounted) context.pop();
     }
   }
