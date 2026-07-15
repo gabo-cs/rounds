@@ -114,6 +114,22 @@ Future<void> scheduleUpcomingReminders({
     await instancesRepo.ensureInstancesExist(activeBills, year, month);
     await _syncMonthNotifications(instancesRepo, year, month, languageCode);
   }
+
+  // Bills left unpaid in earlier months fall outside the window above, so
+  // without this their reminders die at month rollover — exactly when the
+  // nagging matters most. Re-arm each one's daily overdue reminder. (Repeating
+  // alarms can also be lost to force-stop or OEM battery killers; this pass is
+  // the safety net that restores them on every launch.)
+  final lingering = await instancesRepo.getUnpaidInstancesBefore(
+    now.year,
+    now.month,
+  );
+  for (final entry in lingering) {
+    await NotificationService.instance.scheduleOverdueReminderForInstance(
+      entry,
+      languageCode: languageCode,
+    );
+  }
 }
 
 // Signature of the notifications last scheduled for each month, so re-arming a
@@ -145,6 +161,7 @@ Future<void> _syncMonthNotifications(
         e.bill.name,
         e.bill.amount,
         e.bill.dueDayOfMonth,
+        e.bill.isArchived,
       ),
   ]);
   final key = '$year-$month';

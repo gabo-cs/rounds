@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -78,6 +79,26 @@ NotificationDetails _reminderDetails(
       ),
     );
 
+/// [NotificationDetails] for overdue reminders. They get their own
+/// high-importance channel so the daily nag surfaces as heads-up and can be
+/// tuned independently of regular reminders in system settings. (Importance is
+/// per-channel on Android 8+, so escalating an existing channel's notification
+/// wouldn't work — a dedicated channel is the only real escalation mechanism.)
+NotificationDetails _overdueDetails(AppLocalizations l10n) =>
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        'overdue_alerts_v1',
+        'Overdue Bills',
+        channelDescription: 'Daily reminders for bills that are overdue',
+        importance: Importance.high,
+        priority: Priority.high,
+        actions: _androidActions(l10n),
+      ),
+      iOS: DarwinNotificationDetails(
+        categoryIdentifier: 'bill_reminder_${l10n.localeName}',
+      ),
+    );
+
 /// [NotificationDetails] for general (non-bill) reminders — no snooze actions.
 NotificationDetails _generalDetails() => const NotificationDetails(
       android: AndroidNotificationDetails(
@@ -126,6 +147,8 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
   final title = data['title'] as String;
   final body = data['body'] as String;
   final langCode = data['langCode'] as String;
+  // Older payloads predate the flag; they were all regular reminders.
+  final isOverdue = data['overdue'] as bool? ?? false;
 
   tz.initializeTimeZones();
   try {
@@ -152,7 +175,7 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
     title,
     body,
     snoozeTime,
-    _reminderDetails(l10n),
+    isOverdue ? _overdueDetails(l10n) : _reminderDetails(l10n),
     androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
@@ -275,7 +298,9 @@ class NotificationService {
         : AppLocalizationsEn();
 
     for (final entry in instances) {
-      if (entry.instance.isPaid) continue;
+      // Archived bills keep their instances visible but must not nag —
+      // archiving cancels their reminders, and re-arming here would undo that.
+      if (entry.instance.isPaid || entry.bill.isArchived) continue;
       await _scheduleRemindersForInstance(entry, year, month, l10n);
     }
   }
@@ -344,23 +369,70 @@ class NotificationService {
       );
     }
 
-    // Overdue reminder.
-    final overdueTitle = '${entry.bill.name} — ${l10n.overdue}';
-    final overdueBody = '$amountLabel — ${l10n.overdueSince(dueDay)}';
+    // Overdue reminder — a daily nag until the bill is paid.
     if (dueDate.isBefore(todayDate)) {
       // Already overdue → daily repeating reminder starting at the next 9:00.
       await _scheduleOverdueReminder(entry, l10n);
     } else {
-      // Not yet overdue → schedule the first overdue ping for the day after
-      // the due date so it fires even if the app is never reopened.
-      await _scheduleOneShot(
+      // Not yet overdue → arm the daily series to start the day after the
+      // due date, so it keeps firing even if the app is never reopened.
+      await _scheduleOverdueSeries(
         notifId: _notificationId(entry.instance.id, _kOffsetOverdue),
-        title: overdueTitle,
-        body: overdueBody,
-        fireDay: dueDate.add(const Duration(days: 1)),
+        title: '${entry.bill.name} — ${l10n.overdue}',
+        body: '$amountLabel — ${l10n.overdueSince(dueDay)}',
+        firstFireDay: dueDate.add(const Duration(days: 1)),
         l10n: l10n,
       );
     }
+  }
+
+  /// Arm the overdue reminder ahead of time, first firing at 9:00 on
+  /// [firstFireDay] (the day after the due date).
+  ///
+  /// On Android this is a daily repeat from day one, so the nagging continues
+  /// until the bill is paid even if the app is never reopened. iOS repeating
+  /// triggers ignore the start date — they fire at every matching time-of-day,
+  /// which would nag before the bill is even due — so iOS gets a single ping
+  /// here and the daily repeat is armed by the next launch's scheduling pass.
+  Future<void> _scheduleOverdueSeries({
+    required int notifId,
+    required String title,
+    required String body,
+    required DateTime firstFireDay,
+    required AppLocalizations l10n,
+  }) async {
+    final now = tz.TZDateTime.now(tz.local);
+    final scheduledDate = tz.TZDateTime(
+      tz.local,
+      firstFireDay.year,
+      firstFireDay.month,
+      firstFireDay.day,
+      9,
+      0,
+    );
+    if (scheduledDate.isBefore(now)) return; // don't schedule in the past
+
+    final payload = jsonEncode({
+      'notifId': notifId,
+      'title': title,
+      'body': body,
+      'langCode': l10n.localeName,
+      'overdue': true,
+    });
+
+    await _plugin.zonedSchedule(
+      notifId,
+      title,
+      body,
+      scheduledDate,
+      _overdueDetails(l10n),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents:
+          Platform.isAndroid ? DateTimeComponents.time : null,
+      payload: payload,
+    );
   }
 
   /// Schedule a single notification at 9:00 on [fireDay]. Days whose 9:00 slot
@@ -413,6 +485,7 @@ class NotificationService {
       'title': title,
       'body': body,
       'langCode': l10n.localeName,
+      'overdue': true,
     });
 
     final now = tz.TZDateTime.now(tz.local);
@@ -427,7 +500,7 @@ class NotificationService {
       title,
       body,
       scheduledDate,
-      _reminderDetails(l10n),
+      _overdueDetails(l10n),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -509,6 +582,8 @@ class NotificationService {
     final title = data['title'] as String;
     final body = data['body'] as String;
     final langCode = data['langCode'] as String;
+    // Older payloads predate the flag; they were all regular reminders.
+    final isOverdue = data['overdue'] as bool? ?? false;
 
     final snoozeTime = _computeSnoozeTime(response.actionId!);
     if (snoozeTime == null) return;
@@ -522,7 +597,7 @@ class NotificationService {
       title,
       body,
       snoozeTime,
-      _reminderDetails(l10n),
+      isOverdue ? _overdueDetails(l10n) : _reminderDetails(l10n),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,

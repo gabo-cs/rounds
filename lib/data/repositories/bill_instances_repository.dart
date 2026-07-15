@@ -197,6 +197,47 @@ class BillInstancesRepository {
         .getSingleOrNull();
   }
 
+  /// Unpaid instances from months strictly before [year]/[month], for bills
+  /// that are still active. These fall outside the startup scheduling window
+  /// once the month rolls over, but they're exactly the bills that most need
+  /// their overdue reminders kept alive.
+  Future<List<BillInstanceWithBill>> getUnpaidInstancesBefore(
+    int year,
+    int month,
+  ) async {
+    final query = _db.select(_db.billInstances).join([
+      innerJoin(
+        _db.bills,
+        _db.bills.id.equalsExp(_db.billInstances.billId),
+      ),
+    ])
+      ..where(_db.billInstances.isPaid.equals(false) &
+          _db.bills.isArchived.equals(false) &
+          (_db.billInstances.year.isSmallerThanValue(year) |
+              (_db.billInstances.year.equals(year) &
+                  _db.billInstances.month.isSmallerThanValue(month))));
+
+    final rows = await query.get();
+    return rows
+        .map(
+          (row) => (
+            instance: row.readTable(_db.billInstances),
+            bill: row.readTable(_db.bills),
+          ),
+        )
+        .toList();
+  }
+
+  /// IDs of every instance belonging to [billId] — used to cancel their
+  /// scheduled notifications when the bill is deleted or archived.
+  Future<List<int>> getInstanceIdsForBill(int billId) async {
+    final query = _db.selectOnly(_db.billInstances)
+      ..addColumns([_db.billInstances.id])
+      ..where(_db.billInstances.billId.equals(billId));
+    final rows = await query.get();
+    return rows.map((row) => row.read(_db.billInstances.id)!).toList();
+  }
+
   // --- Backup / restore ---
 
   Future<List<Bill>> getAllBills() => _db.select(_db.bills).get();
