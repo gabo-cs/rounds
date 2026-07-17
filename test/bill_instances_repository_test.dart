@@ -28,6 +28,34 @@ void main() {
     );
   }
 
+  group('getUnpaidInstancesForMonth', () {
+    test('returns only that month, unpaid, non-archived', () async {
+      final billId = await createBill('Internet');
+      final archivedId = await createBill('Old Gym');
+      final june = await instanceFor(billId, 2026, 6);
+      await instanceFor(billId, 2026, 5);
+      await instanceFor(billId, 2026, 7);
+      final archivedJune = await instanceFor(archivedId, 2026, 6);
+      await billsRepo.archiveBill(archivedId);
+
+      final result = await instancesRepo.getUnpaidInstancesForMonth(2026, 6);
+
+      expect(result.map((e) => e.instance.id), [june.id]);
+      expect(result.map((e) => e.instance.id), isNot(contains(archivedJune.id)));
+    });
+
+    test('excludes paid instances', () async {
+      final billId = await createBill('Water');
+      final june = await instanceFor(billId, 2026, 6);
+      await instancesRepo.markPaid(
+        instanceId: june.id,
+        paidAt: DateTime(2026, 7, 1),
+      );
+
+      expect(await instancesRepo.getUnpaidInstancesForMonth(2026, 6), isEmpty);
+    });
+  });
+
   group('getUnpaidInstancesBefore', () {
     test('returns only unpaid instances from strictly earlier months',
         () async {

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/extensions/date_extensions.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -115,20 +116,31 @@ Future<void> scheduleUpcomingReminders({
     await _syncMonthNotifications(instancesRepo, year, month, languageCode);
   }
 
-  // Bills left unpaid in earlier months fall outside the window above, so
-  // without this their reminders die at month rollover — exactly when the
-  // nagging matters most. Re-arm each one's daily overdue reminder. (Repeating
-  // alarms can also be lost to force-stop or OEM battery killers; this pass is
-  // the safety net that restores them on every launch.)
-  final lingering = await instancesRepo.getUnpaidInstancesBefore(
-    now.year,
-    now.month,
+  // Bills left unpaid last month fall outside the window above, so without
+  // this their reminders die at month rollover — exactly when the nagging
+  // matters most. Re-arm each one's daily overdue reminder. (Repeating alarms
+  // can also be lost to force-stop or OEM battery killers; this pass is the
+  // safety net that restores them on every launch.)
+  final prev = DateTime(now.year, now.month).previousMonth;
+  final lingering = await instancesRepo.getUnpaidInstancesForMonth(
+    prev.year,
+    prev.month,
   );
   for (final entry in lingering) {
     await NotificationService.instance.scheduleOverdueReminderForInstance(
       entry,
       languageCode: languageCode,
     );
+  }
+
+  // Overdue nagging reaches back one month, no further — retire the reminders
+  // of anything older, including repeats armed before this cutoff existed.
+  final stale = await instancesRepo.getUnpaidInstancesBefore(
+    prev.year,
+    prev.month,
+  );
+  for (final entry in stale) {
+    await NotificationService.instance.cancelForInstance(entry.instance.id);
   }
 }
 

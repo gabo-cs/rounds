@@ -210,8 +210,10 @@ All logic in `core/utils/notification_service.dart` (singleton,
   (in `home_providers.dart`) arms current + next month at every launch — a sliding
   window anchored to the device date, independent of which month the user browses —
   and then re-arms the daily overdue reminder for every unpaid, non-archived
-  instance from *past* months, so nagging survives month rollover and lost alarms
-  (force-stop, OEM battery killers). A per-month signature hash skips platform work
+  instance from the *previous* month, so nagging survives month rollover and lost
+  alarms (force-stop, OEM battery killers). Overdue nagging reaches back one month,
+  no further: reminders for anything older are cancelled by the same pass.
+  A per-month signature hash skips platform work
   when nothing changed. Reminders are scheduled from the due date forward so they
   fire even if the app is never reopened. Archived bills are never scheduled.
 - **Reminder ladder** per unpaid instance, all at 9:00 local: −2d, −1d, due day,

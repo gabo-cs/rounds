@@ -197,10 +197,38 @@ class BillInstancesRepository {
         .getSingleOrNull();
   }
 
+  /// Unpaid instances of active bills in exactly [year]/[month]. Used to keep
+  /// last month's overdue reminders alive after the scheduling window slides
+  /// past them — overdue nagging reaches back one month, no further.
+  Future<List<BillInstanceWithBill>> getUnpaidInstancesForMonth(
+    int year,
+    int month,
+  ) async {
+    final query = _db.select(_db.billInstances).join([
+      innerJoin(
+        _db.bills,
+        _db.bills.id.equalsExp(_db.billInstances.billId),
+      ),
+    ])
+      ..where(_db.billInstances.isPaid.equals(false) &
+          _db.bills.isArchived.equals(false) &
+          _db.billInstances.year.equals(year) &
+          _db.billInstances.month.equals(month));
+
+    final rows = await query.get();
+    return rows
+        .map(
+          (row) => (
+            instance: row.readTable(_db.billInstances),
+            bill: row.readTable(_db.bills),
+          ),
+        )
+        .toList();
+  }
+
   /// Unpaid instances from months strictly before [year]/[month], for bills
-  /// that are still active. These fall outside the startup scheduling window
-  /// once the month rolls over, but they're exactly the bills that most need
-  /// their overdue reminders kept alive.
+  /// that are still active. Used to *retire* reminders older than the nagging
+  /// horizon, so ancient unpaid instances don't nag forever.
   Future<List<BillInstanceWithBill>> getUnpaidInstancesBefore(
     int year,
     int month,
