@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -38,6 +37,32 @@ const _kAllOffsets = [
   _kOffsetIn2Days,
   _kOffsetDueToday,
 ];
+
+// Slots for the proactive overdue ladder: one-shot pings on the 2nd–7th day
+// after the due date (the 1st day reuses the frozen overdue slot 0). Still
+// within the instanceId*10+offset scheme, so no collisions with other kinds.
+const _kOffsetsOverdueLadder = [4, 5, 6, 7, 8, 9];
+
+/// The proactive overdue schedule for a bill due on [dueDate]: one ping per
+/// day for the week after the due date. Kept pure so the date math (month and
+/// year rollovers) is unit-testable.
+///
+/// A repeating notification cannot express "daily starting on a future date":
+/// the plugin snaps a repeating schedule to the next time-of-day match on both
+/// platforms, which would cry "overdue" before the bill is even due. Hence a
+/// ladder of one-shots; launches while the bill is overdue take over with the
+/// open-ended daily repeat (see [NotificationService._scheduleOverdueReminder]).
+List<({int offset, DateTime fireDay})> overdueLadder(DateTime dueDate) => [
+      (
+        offset: _kOffsetOverdue,
+        fireDay: DateTime(dueDate.year, dueDate.month, dueDate.day + 1),
+      ),
+      for (var i = 0; i < _kOffsetsOverdueLadder.length; i++)
+        (
+          offset: _kOffsetsOverdueLadder[i],
+          fireDay: DateTime(dueDate.year, dueDate.month, dueDate.day + i + 2),
+        ),
+    ];
 
 // Fixed ID for the monthly "new round of bills" reminder. Well clear of the
 // instanceId*10+offset range and the test notification (999999).
@@ -371,68 +396,29 @@ class NotificationService {
 
     // Overdue reminder — a daily nag until the bill is paid.
     if (dueDate.isBefore(todayDate)) {
-      // Already overdue → daily repeating reminder starting at the next 9:00.
+      // Already overdue → open-ended daily repeating reminder from the next
+      // 9:00 (a repeating schedule always snaps to the next time-of-day
+      // match, which is exactly right here).
       await _scheduleOverdueReminder(entry, l10n);
     } else {
-      // Not yet overdue → arm the daily series to start the day after the
-      // due date, so it keeps firing even if the app is never reopened.
-      await _scheduleOverdueSeries(
-        notifId: _notificationId(entry.instance.id, _kOffsetOverdue),
-        title: '${entry.bill.name} — ${l10n.overdue}',
-        body: '$amountLabel — ${l10n.overdueSince(dueDay)}',
-        firstFireDay: dueDate.add(const Duration(days: 1)),
-        l10n: l10n,
-      );
+      // Not yet overdue → a week of one-shot pings starting the day after the
+      // due date, so nagging continues even if the app is never reopened.
+      // Launches during that week (or after it) replace this with the
+      // open-ended repeat above.
+      final overdueTitle = '${entry.bill.name} — ${l10n.overdue}';
+      final overdueBody =
+          '$amountLabel — ${l10n.overdueSinceDate(dueDate)}';
+      for (final step in overdueLadder(dueDate)) {
+        await _scheduleOneShot(
+          notifId: _notificationId(entry.instance.id, step.offset),
+          title: overdueTitle,
+          body: overdueBody,
+          fireDay: step.fireDay,
+          l10n: l10n,
+          overdue: true,
+        );
+      }
     }
-  }
-
-  /// Arm the overdue reminder ahead of time, first firing at 9:00 on
-  /// [firstFireDay] (the day after the due date).
-  ///
-  /// On Android this is a daily repeat from day one, so the nagging continues
-  /// until the bill is paid even if the app is never reopened. iOS repeating
-  /// triggers ignore the start date — they fire at every matching time-of-day,
-  /// which would nag before the bill is even due — so iOS gets a single ping
-  /// here and the daily repeat is armed by the next launch's scheduling pass.
-  Future<void> _scheduleOverdueSeries({
-    required int notifId,
-    required String title,
-    required String body,
-    required DateTime firstFireDay,
-    required AppLocalizations l10n,
-  }) async {
-    final now = tz.TZDateTime.now(tz.local);
-    final scheduledDate = tz.TZDateTime(
-      tz.local,
-      firstFireDay.year,
-      firstFireDay.month,
-      firstFireDay.day,
-      9,
-      0,
-    );
-    if (scheduledDate.isBefore(now)) return; // don't schedule in the past
-
-    final payload = jsonEncode({
-      'notifId': notifId,
-      'title': title,
-      'body': body,
-      'langCode': l10n.localeName,
-      'overdue': true,
-    });
-
-    await _plugin.zonedSchedule(
-      notifId,
-      title,
-      body,
-      scheduledDate,
-      _overdueDetails(l10n),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents:
-          Platform.isAndroid ? DateTimeComponents.time : null,
-      payload: payload,
-    );
   }
 
   /// Schedule a single notification at 9:00 on [fireDay]. Days whose 9:00 slot
@@ -443,6 +429,7 @@ class NotificationService {
     required String body,
     required DateTime fireDay,
     required AppLocalizations l10n,
+    bool overdue = false,
   }) async {
     final now = tz.TZDateTime.now(tz.local);
     final scheduledDate =
@@ -455,6 +442,7 @@ class NotificationService {
       'title': title,
       'body': body,
       'langCode': l10n.localeName,
+      'overdue': overdue,
     });
 
     await _plugin.zonedSchedule(
@@ -462,7 +450,7 @@ class NotificationService {
       title,
       body,
       scheduledDate,
-      _reminderDetails(l10n),
+      overdue ? _overdueDetails(l10n) : _reminderDetails(l10n),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -474,12 +462,24 @@ class NotificationService {
     BillInstanceWithBill entry,
     AppLocalizations l10n,
   ) async {
-    final dueDay = entry.bill.dueDayOfMonth;
+    // The month matters in the copy: the past-month re-arm pass nags for old
+    // instances, and "was due the 5th" alone reads as this month's bill.
+    final dueDate = DateTime(
+      entry.instance.year,
+      entry.instance.month,
+      entry.bill.dueDayOfMonth,
+    );
     final title = '${entry.bill.name} — ${l10n.overdue}';
     final body =
         '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel}'
-        ' — ${l10n.overdueSince(dueDay)}';
+        ' — ${l10n.overdueSinceDate(dueDate)}';
     final notifId = _notificationId(entry.instance.id, _kOffsetOverdue);
+
+    // Take over from any still-pending ladder pings — the open-ended repeat
+    // replaces slot 0, and the remaining one-shots would double up with it.
+    for (final offset in _kOffsetsOverdueLadder) {
+      await _plugin.cancel(_notificationId(entry.instance.id, offset));
+    }
     final payload = jsonEncode({
       'notifId': notifId,
       'title': title,
@@ -632,7 +632,7 @@ class NotificationService {
 
   Future<void> cancelForInstance(int instanceId) async {
     if (!_initialized) return;
-    for (final offset in _kAllOffsets) {
+    for (final offset in [..._kAllOffsets, ..._kOffsetsOverdueLadder]) {
       await _plugin.cancel(_notificationId(instanceId, offset));
     }
   }

@@ -52,6 +52,11 @@ abstract class AppLocalizations {
   /// Label for an overdue bill, e.g. "Was due the 24th" / "Venció el 24".
   String overdueSince(int day);
 
+  /// Month-aware overdue label for notifications, e.g. "Was due Jun 5" /
+  /// "Venció el 5 jun." — overdue nags can reference a past month's bill,
+  /// where a bare day number would read as the current month's.
+  String overdueSinceDate(DateTime date);
+
   /// Option shown in the due-day dropdown, e.g. "15th of the month" / "Día 15 del mes".
   String dueDayOption(int day);
 

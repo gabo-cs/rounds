@@ -48,6 +48,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String overdueSince(int day) => 'Was due the ${_ordinal(day)}';
 
   @override
+  String overdueSinceDate(DateTime date) =>
+      'Was due ${DateFormat.MMMd('en').format(date)}';
+
+  @override
   String dueDayOption(int day) {
     if (day >= 11 && day <= 13) return '${day}th of the month';
     final suffix = switch (day % 10) {

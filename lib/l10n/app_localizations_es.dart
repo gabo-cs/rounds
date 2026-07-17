@@ -49,6 +49,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String overdueSince(int day) => 'Venció el $day';
 
   @override
+  String overdueSinceDate(DateTime date) =>
+      'Venció el ${DateFormat.MMMd('es').format(date)}';
+
+  @override
   String dueDayOption(int day) => 'Día $day del mes';
 
   // ── Home screen ──────────────────────────────────────────────────────────────
