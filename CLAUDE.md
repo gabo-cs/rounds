@@ -202,10 +202,10 @@ All logic in `core/utils/notification_service.dart` (singleton,
 `NotificationService.instance`). Key invariants:
 
 - **ID scheme**: `instanceId * 10 + offset`, offsets 0–3 (overdue=0, tomorrow=1,
-  in-2-days=2, due-today=3). Offset values are frozen for upgrade compatibility —
-  re-scheduling must overwrite, not duplicate. Reserved IDs: 999999 (test),
-  1000001 (monthly kickoff). New notification kinds need IDs that can't collide
-  with `instanceId * 10 + n`.
+  in-2-days=2, due-today=3) plus 4–9 (overdue ladder, days 2–7 past due). Offset
+  values are frozen for upgrade compatibility — re-scheduling must overwrite, not
+  duplicate. Reserved IDs: 999999 (test), 1000001 (monthly kickoff). New
+  notification kinds need IDs that can't collide with `instanceId * 10 + n`.
 - **Scheduling model**: proactive and startup-driven. `scheduleUpcomingReminders`
   (in `home_providers.dart`) arms current + next month at every launch — a sliding
   window anchored to the device date, independent of which month the user browses —
@@ -215,11 +215,17 @@ All logic in `core/utils/notification_service.dart` (singleton,
   when nothing changed. Reminders are scheduled from the due date forward so they
   fire even if the app is never reopened. Archived bills are never scheduled.
 - **Reminder ladder** per unpaid instance, all at 9:00 local: −2d, −1d, due day,
-  then a **daily repeating overdue reminder until paid**. On Android the daily
-  series is armed proactively (first fire = due date + 1, repeats via
-  `DateTimeComponents.time`); on iOS repeating triggers ignore the start date and
-  would nag before the due date, so iOS gets a single due+1 ping and the daily
-  repeat is armed by the next launch's scheduling pass.
+  then daily overdue nagging until paid — armed proactively as **seven one-shot
+  pings** (due+1 on slot 0, due+2…due+7 on slots 4–9, `overdueLadder()`); any
+  launch while the bill is overdue replaces the ladder with an **open-ended
+  daily repeating reminder** (and cancels leftover ladder pings to avoid
+  doubles). **Plugin gotcha, learned the hard way**: `matchDateTimeComponents`
+  snaps a repeating schedule to the *next* component match on both platforms —
+  a future start date is silently ignored — so never arm a repeating
+  notification that shouldn't begin firing immediately.
+- Overdue notification copy is month-aware (`overdueSinceDate` → "Was due
+  Jun 5"): the past-month re-arm pass nags for old instances, and a bare day
+  number would read as the current month's bill.
 - **Two channels**: regular reminders on `bill_reminders_v2` (default importance);
   overdue reminders on `overdue_alerts_v1` (high importance, heads-up). Importance
   is per-channel on Android 8+ — escalation means a different channel, never an
