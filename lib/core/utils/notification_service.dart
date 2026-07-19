@@ -68,6 +68,15 @@ List<({int offset, DateTime fireDay})> overdueLadder(DateTime dueDate) => [
 // instanceId*10+offset range and the test notification (999999).
 const _kMonthlyKickoffId = 1000001;
 
+/// Pause between per-instance bursts of platform calls in bulk scheduling
+/// passes. Each unpaid instance costs up to ten zonedSchedule/cancel
+/// round-trips whose responses all land on the UI isolate; spacing the bursts
+/// a frame apart keeps a big re-arm pass from starving frames while the user
+/// is already scrolling (the same stutter the post-frame + 2s deferral in
+/// main.dart works around). The reminders are for future days, so stretching
+/// the pass by a few hundred milliseconds is immaterial.
+const kNotificationSchedulePacing = Duration(milliseconds: 16);
+
 // ── Action helpers ───────────────────────────────────────────────────────────
 
 // Snooze actions bring the app to the foreground so the reschedule runs on the
@@ -322,10 +331,15 @@ class NotificationService {
         ? AppLocalizationsEs()
         : AppLocalizationsEn();
 
+    var scheduledAny = false;
     for (final entry in instances) {
       // Archived bills keep their instances visible but must not nag —
       // archiving cancels their reminders, and re-arming here would undo that.
       if (entry.instance.isPaid || entry.bill.isArchived) continue;
+      if (scheduledAny) {
+        await Future<void>.delayed(kNotificationSchedulePacing);
+      }
+      scheduledAny = true;
       await _scheduleRemindersForInstance(entry, year, month, l10n);
     }
   }

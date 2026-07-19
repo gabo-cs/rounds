@@ -115,7 +115,9 @@ class SettingsScreen extends ConsumerWidget {
                           .requestExactAlarmsPermission();
                     } else {
                       await NotificationService.instance.cancelAll();
-                      resetNotificationSignatures();
+                      await resetNotificationSignatures(
+                        ref.read(sharedPreferencesProvider),
+                      );
                     }
                     notifier.setNotificationsEnabled(enabled);
                     if (enabled) {
@@ -130,6 +132,7 @@ class SettingsScreen extends ConsumerWidget {
                         billsRepo: ref.read(billsRepositoryProvider),
                         instancesRepo:
                             ref.read(billInstancesRepositoryProvider),
+                        prefs: ref.read(sharedPreferencesProvider),
                         languageCode: languageCode,
                       );
                     }
@@ -284,12 +287,13 @@ class SettingsScreen extends ConsumerWidget {
       // Reminders scheduled before the import reference instance IDs from the
       // replaced data — rebuild the schedule from scratch.
       await NotificationService.instance.cancelAll();
-      resetNotificationSignatures();
+      await resetNotificationSignatures(ref.read(sharedPreferencesProvider));
       final settings = ref.read(settingsProvider);
       if (settings.notificationsEnabled) {
         await scheduleUpcomingReminders(
           billsRepo: ref.read(billsRepositoryProvider),
           instancesRepo: ref.read(billInstancesRepositoryProvider),
+          prefs: ref.read(sharedPreferencesProvider),
           languageCode: settings.languageCode,
         );
       }

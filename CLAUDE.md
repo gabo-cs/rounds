@@ -213,9 +213,16 @@ All logic in `core/utils/notification_service.dart` (singleton,
   instance from the *previous* month, so nagging survives month rollover and lost
   alarms (force-stop, OEM battery killers). Overdue nagging reaches back one month,
   no further: reminders for anything older are cancelled by the same pass.
-  A per-month signature hash skips platform work
-  when nothing changed. Reminders are scheduled from the due date forward so they
-  fire even if the app is never reopened. Archived bills are never scheduled.
+  A per-month signature (a canonical string persisted in SharedPreferences —
+  not a hash; Dart hashes are seeded per process) skips the platform-call storm
+  when nothing changed. Today's date is part of the signature, so the skip
+  holds only within a day — the first launch of each day re-arms everything,
+  keeping the lost-alarm and overdue-takeover safety nets on a daily cadence.
+  Bulk passes pace their per-instance call bursts one frame apart
+  (`kNotificationSchedulePacing`) so responses draining on the UI isolate
+  don't stutter startup scrolling. Reminders are scheduled from the due date
+  forward so they fire even if the app is never reopened. Archived bills are
+  never scheduled.
 - **Reminder ladder** per unpaid instance, all at 9:00 local: −2d, −1d, due day,
   then daily overdue nagging until paid — armed proactively as **seven one-shot
   pings** (due+1 on slot 0, due+2…due+7 on slots 4–9, `overdueLadder()`); any
@@ -308,8 +315,8 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
 - **Notifications toggle**: every scheduling path (startup, language change,
   undo-payment, import) must check `settings.notificationsEnabled` — they all do
   now; keep it that way when adding new scheduling paths. After `cancelAll()`,
-  call `resetNotificationSignatures()` (in `home_providers.dart`) or the
-  signature cache will skip the next re-arm as "already done".
+  call `resetNotificationSignatures(prefs)` (in `home_providers.dart`) or the
+  persisted signatures will skip the next re-arm as "already done".
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
 - Amounts are `double` + hardcoded `$` formatting; fine for a personal app, know it
   before building anything money-math heavy.

@@ -60,6 +60,7 @@ void main() async {
       await scheduleUpcomingReminders(
         billsRepo: container.read(billsRepositoryProvider),
         instancesRepo: container.read(billInstancesRepositoryProvider),
+        prefs: prefs,
         languageCode: languageCode,
       );
     });

@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/extensions/date_extensions.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/data/repositories/bills_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // --- Root providers ---
 
@@ -99,21 +102,39 @@ final monthInstancesProvider = StreamProvider.autoDispose
 Future<void> scheduleUpcomingReminders({
   required BillsRepository billsRepo,
   required BillInstancesRepository instancesRepo,
+  required SharedPreferences prefs,
   required String languageCode,
+  DateTime? now,
 }) async {
-  final now = DateTime.now();
+  final today = now ?? DateTime.now();
   final months = <(int, int)>[
-    (now.year, now.month),
+    (today.year, today.month),
     (
-      now.month == 12 ? now.year + 1 : now.year,
-      now.month == 12 ? 1 : now.month + 1,
+      today.month == 12 ? today.year + 1 : today.year,
+      today.month == 12 ? 1 : today.month + 1,
     ),
   ];
 
   final activeBills = await billsRepo.watchAllActiveBills().first;
   for (final (year, month) in months) {
     await instancesRepo.ensureInstancesExist(activeBills, year, month);
-    await _syncMonthNotifications(instancesRepo, year, month, languageCode);
+    await _syncMonthNotifications(
+      instancesRepo,
+      prefs,
+      year,
+      month,
+      languageCode,
+      today,
+    );
+  }
+
+  // Signatures for months outside the sliding window are dead weight — drop
+  // them so month rollover doesn't accumulate stale keys forever.
+  final live = {for (final (y, m) in months) '$_kSignaturePrefix$y-$m'};
+  for (final key in prefs.getKeys()) {
+    if (key.startsWith(_kSignaturePrefix) && !live.contains(key)) {
+      await prefs.remove(key);
+    }
   }
 
   // Bills left unpaid last month fall outside the window above, so without
@@ -121,12 +142,13 @@ Future<void> scheduleUpcomingReminders({
   // matters most. Re-arm each one's daily overdue reminder. (Repeating alarms
   // can also be lost to force-stop or OEM battery killers; this pass is the
   // safety net that restores them on every launch.)
-  final prev = DateTime(now.year, now.month).previousMonth;
+  final prev = DateTime(today.year, today.month).previousMonth;
   final lingering = await instancesRepo.getUnpaidInstancesForMonth(
     prev.year,
     prev.month,
   );
   for (final entry in lingering) {
+    await Future<void>.delayed(kNotificationSchedulePacing);
     await NotificationService.instance.scheduleOverdueReminderForInstance(
       entry,
       languageCode: languageCode,
@@ -140,45 +162,77 @@ Future<void> scheduleUpcomingReminders({
     prev.month,
   );
   for (final entry in stale) {
+    await Future<void>.delayed(kNotificationSchedulePacing);
     await NotificationService.instance.cancelForInstance(entry.instance.id);
   }
 }
 
-// Signature of the notifications last scheduled for each month, so re-arming a
-// month whose bills are unchanged does no platform work. The signature changes
-// whenever a bill is added, edited, paid, or the language switches.
-final _scheduledSignatures = <String, int>{};
+// Signatures of the notifications last scheduled per month, persisted so a
+// launch where nothing changed skips the platform-call storm entirely — the
+// re-arm pass costs up to ten zonedSchedule round-trips per unpaid instance,
+// and their responses landing on the UI isolate right after startup read as
+// scroll stutter. Today's date is part of the signature, so the skip only
+// holds within a day: the first launch of each day still re-arms everything,
+// keeping the safety nets (lost-alarm recovery, ladder → open-ended repeat
+// takeover for newly overdue bills) on a daily cadence.
+const _kSignaturePrefix = 'notif_signature_';
 
-/// Forget which months are armed. Needed after cancelAll(): the DB state (and
-/// thus the signatures) is unchanged, so without this a later scheduling pass
-/// would be skipped as "already done" and the cancelled reminders never return.
-void resetNotificationSignatures() => _scheduledSignatures.clear();
-
-Future<void> _syncMonthNotifications(
-  BillInstancesRepository instancesRepo,
-  int year,
-  int month,
-  String languageCode,
-) async {
-  final instances = await instancesRepo
-      .watchInstancesForMonth(year, month)
-      .first;
-
-  final signature = Object.hashAll([
+/// Canonical signature of a month's reminder-relevant state. A string rather
+/// than a hash because it must survive process restarts: Dart's Object.hash is
+/// seeded per run, so a persisted hash would never match again.
+String monthNotificationSignature({
+  required DateTime today,
+  required String languageCode,
+  required List<BillInstanceWithBill> instances,
+}) {
+  // Sorted so the signature doesn't depend on query ordering.
+  final entries = [...instances]
+    ..sort((a, b) => a.instance.id.compareTo(b.instance.id));
+  return jsonEncode([
+    '${today.year}-${today.month}-${today.day}',
     languageCode,
-    for (final e in instances)
-      Object.hash(
+    for (final e in entries)
+      [
         e.instance.id,
         e.instance.isPaid,
         e.bill.name,
         e.bill.amount,
         e.bill.dueDayOfMonth,
         e.bill.isArchived,
-      ),
+      ],
   ]);
-  final key = '$year-$month';
-  if (_scheduledSignatures[key] == signature) return;
-  _scheduledSignatures[key] = signature;
+}
+
+/// Forget which months are armed. Needed after cancelAll(): the DB state (and
+/// thus the signatures) is unchanged, so without this a later scheduling pass
+/// would be skipped as "already done" and the cancelled reminders never return.
+Future<void> resetNotificationSignatures(SharedPreferences prefs) async {
+  for (final key in prefs.getKeys()) {
+    if (key.startsWith(_kSignaturePrefix)) {
+      await prefs.remove(key);
+    }
+  }
+}
+
+Future<void> _syncMonthNotifications(
+  BillInstancesRepository instancesRepo,
+  SharedPreferences prefs,
+  int year,
+  int month,
+  String languageCode,
+  DateTime today,
+) async {
+  final instances = await instancesRepo
+      .watchInstancesForMonth(year, month)
+      .first;
+
+  final signature = monthNotificationSignature(
+    today: today,
+    languageCode: languageCode,
+    instances: instances,
+  );
+  final key = '$_kSignaturePrefix$year-$month';
+  if (prefs.getString(key) == signature) return;
 
   await NotificationService.instance.scheduleForMonth(
     instances,
@@ -186,4 +240,8 @@ Future<void> _syncMonthNotifications(
     month,
     languageCode: languageCode,
   );
+
+  // Recorded only after the pass completes, so an interrupted pass isn't
+  // mistaken for a finished one on the next launch.
+  await prefs.setString(key, signature);
 }
