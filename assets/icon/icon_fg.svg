@@ -1,35 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 182 182" width="1024" height="1024">
   <!--
-    Adaptive icon foreground: ring + center card, no background.
+    Adaptive icon foreground: loop + check, no background.
     The logo (100x100 design) is centered on the 182 canvas and scaled up to
-    ~1.44 so the ring fills the adaptive safe/visible zone instead of floating
-    small in the middle. The ring's outer edge sits at the 66dp safe-zone edge;
-    the card (key content) stays well inside.
+    ~1.44 so the loop fills the adaptive safe/visible zone instead of floating
+    small in the middle. The loop's outer edge sits at the 66dp safe-zone edge;
+    the check (key content) stays well inside.
   -->
   <defs>
-    <linearGradient id="paid" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="loop" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#a5b4fc"/>
       <stop offset="100%" stop-color="#6366f1"/>
     </linearGradient>
-    <filter id="cardShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="1.4" stdDeviation="1.7" flood-color="#000000" flood-opacity="0.32"/>
-    </filter>
   </defs>
 
   <g transform="translate(91 91) scale(1.44) translate(-50 -50)">
-    <!-- Ring: 6 segments (4 paid, 2 pending) -->
-    <path d="M 50 15 A 35 35 0 0 1 73.42 23.99" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M 80.31 32.5 A 35 35 0 0 1 84.23 57.28" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M 80.31 67.5 A 35 35 0 0 1 60.82 83.29" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M 50 85 A 35 35 0 0 1 26.58 76.01" fill="none" stroke="url(#paid)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M 19.69 67.5 A 35 35 0 0 1 15.77 42.72" fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
-    <path d="M 19.69 32.5 A 35 35 0 0 1 39.18 16.71" fill="none" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
-
-    <!-- Center: stacked checklist card -->
-    <g filter="url(#cardShadow)">
-      <rect x="42" y="36" width="26" height="32" rx="4.5" fill="#cbd5e1" transform="rotate(-5 55 52)"/>
-      <rect x="35.5" y="32.5" width="29" height="35" rx="5.5" fill="#ffffff" stroke="#3b82f6" stroke-width="3.5"/>
-      <path d="M 42.5 50.5 L 48 56 L 59 42.5" fill="none" stroke="#3b82f6" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
+    <path d="M 79.56 37.75 A 32 32 0 1 1 62.25 20.44"
+          fill="none" stroke="url(#loop)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 37.5 51 L 46 59.5 L 63 39.5"
+          fill="none" stroke="#ffffff" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>
