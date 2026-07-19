@@ -480,12 +480,17 @@ class NotificationService {
     for (final offset in _kOffsetsOverdueLadder) {
       await _plugin.cancel(_notificationId(entry.instance.id, offset));
     }
+    // 'repeating' lets the snooze handler know this schedule is the open-ended
+    // daily repeat — after the ladder takeover it's the *only* reminder left
+    // for this bill, so a snooze must re-arm it as repeating, not downgrade it
+    // to a one-shot that would end the nagging for good.
     final payload = jsonEncode({
       'notifId': notifId,
       'title': title,
       'body': body,
       'langCode': l10n.localeName,
       'overdue': true,
+      'repeating': true,
     });
 
     final now = tz.TZDateTime.now(tz.local);
@@ -584,6 +589,13 @@ class NotificationService {
     final langCode = data['langCode'] as String;
     // Older payloads predate the flag; they were all regular reminders.
     final isOverdue = data['overdue'] as bool? ?? false;
+    // Snoozing shares the notification ID with the original schedule, so
+    // rescheduling overwrites it. For the open-ended daily overdue repeat that
+    // must not mean a one-shot: the ladder takeover already cancelled every
+    // other reminder for the bill, and a one-shot here would silently end the
+    // nagging once it fired. Keep it repeating — it nags at the snoozed time
+    // until the next launch's scheduling pass snaps it back to 9:00.
+    final isRepeating = data['repeating'] as bool? ?? false;
 
     final snoozeTime = _computeSnoozeTime(response.actionId!);
     if (snoozeTime == null) return;
@@ -601,6 +613,7 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: isRepeating ? DateTimeComponents.time : null,
       payload: jsonEncode(data),
     );
 

@@ -237,7 +237,10 @@ All logic in `core/utils/notification_service.dart` (singleton,
   `langCode`) that must be self-contained — the background isolate handler
   (`@pragma('vm:entry-point')`) re-initializes timezone + plugin from scratch and can
   touch nothing from the app's state. Cold-start snoozes are recovered via
-  `getNotificationAppLaunchDetails`.
+  `getNotificationAppLaunchDetails`. Snoozing reschedules on the *same* ID, so the
+  payload's `repeating` flag decides one-shot vs. daily repeat — the open-ended
+  overdue repeat is the only reminder left after the ladder takeover, and snoozing
+  it as a one-shot would silently end the nagging.
 - **Anything that retires a bill or instance must cancel its notifications**:
   mark-paid cancels the instance's IDs; deleting a bill cancels all its instances'
   IDs (grab them *before* the delete removes the rows); archiving does the same.
