@@ -151,9 +151,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       final instanceIds = await ref
           .read(billInstancesRepositoryProvider)
           .getInstanceIdsForBill(bill.id);
-      for (final id in instanceIds) {
-        await NotificationService.instance.cancelForInstance(id);
-      }
+      await NotificationService.instance.cancelForInstances(instanceIds);
       if (mounted) context.pop();
     }
   }

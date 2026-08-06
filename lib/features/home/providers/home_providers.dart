@@ -1,12 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/extensions/date_extensions.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/data/repositories/bills_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // --- Root providers ---
 
@@ -83,7 +80,7 @@ final monthInstancesProvider = StreamProvider.autoDispose
         // once, and one shared subscription avoids piling redundant round-trips
         // onto the just-spawned drift isolate. Notification scheduling is *not*
         // done here — it's device-month based and handled at startup by
-        // [scheduleUpcomingReminders], independent of what's viewed.
+        // [reconcileNotifications], independent of what's viewed.
         final activeBills = await ref.watch(activeBillsProvider.future);
         await instancesRepo.ensureInstancesExist(
           activeBills,
@@ -95,153 +92,70 @@ final monthInstancesProvider = StreamProvider.autoDispose
       yield* instancesRepo.watchInstancesForMonth(month.year, month.month);
     });
 
-/// Schedule per-bill reminders for the current and next month, based on the
-/// device's date. Called once at startup: it's a sliding window anchored to
-/// "now", so each launch re-arms the current + upcoming month regardless of
-/// which month the user browses to.
-Future<void> scheduleUpcomingReminders({
+/// Bring the platform's notification schedule in line with the database.
+///
+/// Builds the reminders that *should* be armed across a three-month window —
+/// the previous month (whose unpaid bills keep nagging), the current one, and
+/// the next — and hands them to [NotificationService.reconcile], which issues
+/// only the differences. The window is anchored to the device's date, not to
+/// the month being browsed, and slides forward on its own.
+///
+/// Because the pass is a diff, running it costs a single platform call when
+/// nothing has changed. That is what lets it run unconditionally on every
+/// launch and still serve as the safety net that restores alarms lost to a
+/// force-stop or an OEM battery killer — the previous design could only afford
+/// to do that once a day, and paid for it with a storm of platform calls that
+/// blocked touch input for seconds after startup.
+Future<void> reconcileNotifications({
   required BillsRepository billsRepo,
   required BillInstancesRepository instancesRepo,
-  required SharedPreferences prefs,
   required String languageCode,
   DateTime? now,
 }) async {
   final today = now ?? DateTime.now();
-  final months = <(int, int)>[
-    (today.year, today.month),
-    (
-      today.month == 12 ? today.year + 1 : today.year,
-      today.month == 12 ? 1 : today.month + 1,
-    ),
-  ];
+  final current = DateTime(today.year, today.month);
+  // Rolls the year over on its own in December.
+  final next = DateTime(today.year, today.month + 1);
+  final prev = current.previousMonth;
 
+  // Instances are generated lazily when a month is viewed, so the months we
+  // schedule for may not exist yet on a launch that never reaches them.
   final activeBills = await billsRepo.watchAllActiveBills().first;
-  for (final (year, month) in months) {
-    await instancesRepo.ensureInstancesExist(activeBills, year, month);
-    await _syncMonthNotifications(
-      instancesRepo,
-      prefs,
-      year,
-      month,
-      languageCode,
-      today,
+  for (final month in [current, next]) {
+    await instancesRepo.ensureInstancesExist(
+      activeBills,
+      month.year,
+      month.month,
     );
   }
 
-  // Signatures for months outside the sliding window are dead weight — drop
-  // them so month rollover doesn't accumulate stale keys forever.
-  final live = {for (final (y, m) in months) '$_kSignaturePrefix$y-$m'};
-  for (final key in prefs.getKeys()) {
-    if (key.startsWith(_kSignaturePrefix) && !live.contains(key)) {
-      await prefs.remove(key);
-    }
-  }
-
-  // Bills left unpaid last month fall outside the window above, so without
-  // this their reminders die at month rollover — exactly when the nagging
-  // matters most. Re-arm each one's daily overdue reminder. (Repeating alarms
-  // can also be lost to force-stop or OEM battery killers; this pass is the
-  // safety net that restores them on every launch.)
-  final prev = DateTime(today.year, today.month).previousMonth;
-  final lingering = await instancesRepo.getUnpaidInstancesForMonth(
-    prev.year,
-    prev.month,
-  );
-  for (final entry in lingering) {
-    await Future<void>.delayed(kNotificationSchedulePacing);
-    await NotificationService.instance.scheduleOverdueReminderForInstance(
-      entry,
-      languageCode: languageCode,
+  final windowed = <BillInstanceWithBill>[];
+  for (final month in [prev, current, next]) {
+    windowed.addAll(
+      await instancesRepo.watchInstancesForMonth(month.year, month.month).first,
     );
   }
 
-  // Overdue nagging reaches back one month, no further — retire the reminders
-  // of anything older, including repeats armed before this cutoff existed.
+  // Unpaid instances older than the window have outlived the nagging horizon.
+  // Managing their IDs with nothing planned for them is what retires their
+  // reminders, including repeats armed before this cutoff existed.
   final stale = await instancesRepo.getUnpaidInstancesBefore(
     prev.year,
     prev.month,
   );
-  for (final entry in stale) {
-    await Future<void>.delayed(kNotificationSchedulePacing);
-    await NotificationService.instance.cancelForInstance(entry.instance.id);
-  }
-}
 
-// Signatures of the notifications last scheduled per month, persisted so a
-// launch where nothing changed skips the platform-call storm entirely — the
-// re-arm pass costs up to ten zonedSchedule round-trips per unpaid instance,
-// and their responses landing on the UI isolate right after startup read as
-// scroll stutter. Today's date is part of the signature, so the skip only
-// holds within a day: the first launch of each day still re-arms everything,
-// keeping the safety nets (lost-alarm recovery, ladder → open-ended repeat
-// takeover for newly overdue bills) on a daily cadence.
-const _kSignaturePrefix = 'notif_signature_';
-
-/// Canonical signature of a month's reminder-relevant state. A string rather
-/// than a hash because it must survive process restarts: Dart's Object.hash is
-/// seeded per run, so a persisted hash would never match again.
-String monthNotificationSignature({
-  required DateTime today,
-  required String languageCode,
-  required List<BillInstanceWithBill> instances,
-}) {
-  // Sorted so the signature doesn't depend on query ordering.
-  final entries = [...instances]
-    ..sort((a, b) => a.instance.id.compareTo(b.instance.id));
-  return jsonEncode([
-    '${today.year}-${today.month}-${today.day}',
-    languageCode,
-    for (final e in entries)
-      [
-        e.instance.id,
-        e.instance.isPaid,
-        e.bill.name,
-        e.bill.amount,
-        e.bill.dueDayOfMonth,
-        e.bill.isArchived,
-      ],
-  ]);
-}
-
-/// Forget which months are armed. Needed after cancelAll(): the DB state (and
-/// thus the signatures) is unchanged, so without this a later scheduling pass
-/// would be skipped as "already done" and the cancelled reminders never return.
-Future<void> resetNotificationSignatures(SharedPreferences prefs) async {
-  for (final key in prefs.getKeys()) {
-    if (key.startsWith(_kSignaturePrefix)) {
-      await prefs.remove(key);
-    }
-  }
-}
-
-Future<void> _syncMonthNotifications(
-  BillInstancesRepository instancesRepo,
-  SharedPreferences prefs,
-  int year,
-  int month,
-  String languageCode,
-  DateTime today,
-) async {
-  final instances = await instancesRepo
-      .watchInstancesForMonth(year, month)
-      .first;
-
-  final signature = monthNotificationSignature(
-    today: today,
-    languageCode: languageCode,
-    instances: instances,
+  await NotificationService.instance.reconcile(
+    plan: [
+      monthlyKickoffPlan(now: today, languageCode: languageCode),
+      for (final entry in windowed)
+        ...plannedRemindersFor(entry, now: today, languageCode: languageCode),
+    ],
+    // Every instance in the window is managed, not just the ones with
+    // reminders planned: that is what makes the pass convergent. A bill that
+    // was paid or archived while a cancel was lost has its leftovers cleaned
+    // up here instead of nagging forever.
+    managedInstanceIds: {
+      for (final entry in [...windowed, ...stale]) entry.instance.id,
+    },
   );
-  final key = '$_kSignaturePrefix$year-$month';
-  if (prefs.getString(key) == signature) return;
-
-  await NotificationService.instance.scheduleForMonth(
-    instances,
-    year,
-    month,
-    languageCode: languageCode,
-  );
-
-  // Recorded only after the pass completes, so an interrupted pass isn't
-  // mistaken for a finished one on the next launch.
-  await prefs.setString(key, signature);
 }

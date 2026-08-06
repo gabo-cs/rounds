@@ -54,13 +54,9 @@ void main() async {
     // reminders the user turned off.
     if (!notificationsEnabled) return;
     Future.delayed(const Duration(seconds: 2), () async {
-      await NotificationService.instance.scheduleMonthlyKickoff(
-        languageCode: languageCode,
-      );
-      await scheduleUpcomingReminders(
+      await reconcileNotifications(
         billsRepo: container.read(billsRepositoryProvider),
         instancesRepo: container.read(billInstancesRepositoryProvider),
-        prefs: prefs,
         languageCode: languageCode,
       );
     });

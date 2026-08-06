@@ -171,9 +171,7 @@ class BillsScreen extends ConsumerWidget {
           .read(billInstancesRepositoryProvider)
           .getInstanceIdsForBill(bill.id);
       await ref.read(billsRepositoryProvider).deleteBill(bill.id);
-      for (final id in instanceIds) {
-        await NotificationService.instance.cancelForInstance(id);
-      }
+      await NotificationService.instance.cancelForInstances(instanceIds);
     }
   }
 }

@@ -35,13 +35,6 @@ const _kOffsetTomorrow = 1;
 const _kOffsetIn2Days = 2;
 const _kOffsetDueToday = 3;
 
-const _kAllOffsets = [
-  _kOffsetOverdue,
-  _kOffsetTomorrow,
-  _kOffsetIn2Days,
-  _kOffsetDueToday,
-];
-
 // Slots for the proactive overdue ladder: one-shot pings on the 2nd–7th day
 // after the due date (the 1st day reuses the frozen overdue slot 0). Still
 // within the instanceId*10+offset scheme, so no collisions with other kinds.
@@ -55,7 +48,7 @@ const _kOffsetsOverdueLadder = [4, 5, 6, 7, 8, 9];
 /// the plugin snaps a repeating schedule to the next time-of-day match on both
 /// platforms, which would cry "overdue" before the bill is even due. Hence a
 /// ladder of one-shots; launches while the bill is overdue take over with the
-/// open-ended daily repeat (see [NotificationService._scheduleOverdueReminder]).
+/// open-ended daily repeat (see [plannedRemindersFor]).
 List<({int offset, DateTime fireDay})> overdueLadder(DateTime dueDate) => [
       (
         offset: _kOffsetOverdue,
@@ -71,15 +64,248 @@ List<({int offset, DateTime fireDay})> overdueLadder(DateTime dueDate) => [
 // Fixed ID for the monthly "new round of bills" reminder. Well clear of the
 // instanceId*10+offset range and the test notification (999999).
 const _kMonthlyKickoffId = 1000001;
+const _kTestNotificationId = 999999;
 
-/// Pause between per-instance bursts of platform calls in bulk scheduling
-/// passes. Each unpaid instance costs up to ten zonedSchedule/cancel
-/// round-trips whose responses all land on the UI isolate; spacing the bursts
-/// a frame apart keeps a big re-arm pass from starving frames while the user
-/// is already scrolling (the same stutter the post-frame + 2s deferral in
-/// main.dart works around). The reminders are for future days, so stretching
-/// the pass by a few hundred milliseconds is immaterial.
+// IDs outside the instanceId*10+offset scheme. [NotificationService.reconcile]
+// must never mistake them for an instance's slot and cancel them.
+const _kReservedIds = {_kMonthlyKickoffId, _kTestNotificationId};
+
+/// Pause between the individual platform calls of a bulk scheduling pass.
+///
+/// Every zonedSchedule/cancel is handled on the *Android main thread*, where
+/// flutter_local_notifications rewrites its entire persisted schedule (a Gson
+/// load + save of the whole list) for each call. That thread is also the one
+/// that forwards touch events to the UI isolate, so an uninterrupted run of
+/// calls swallows input. Yielding between calls keeps the thread reachable.
+/// [NotificationService.reconcile] makes such runs rare; the pacing is what
+/// keeps the rare ones from being felt.
 const kNotificationSchedulePacing = Duration(milliseconds: 16);
+
+AppLocalizations _l10nFor(String languageCode) =>
+    languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
+
+int _notificationId(int instanceId, int offset) => instanceId * 10 + offset;
+
+// ── The desired schedule ─────────────────────────────────────────────────────
+
+/// How a notification recurs. Drives `matchDateTimeComponents`, which the
+/// plugin snaps to the *next* component match — see [overdueLadder].
+enum NotificationRepeat { none, daily, monthly }
+
+/// One notification the app wants armed, described completely.
+///
+/// Pure data, so the entire desired schedule can be computed and compared
+/// against what the platform already has before any channel call is made.
+@immutable
+class PlannedNotification {
+  const PlannedNotification({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.fireAt,
+    required this.languageCode,
+    this.overdue = false,
+    this.repeat = NotificationRepeat.none,
+    this.snoozable = true,
+  });
+
+  final int id;
+  final String title;
+  final String body;
+
+  /// Local wall-clock time of the first firing. For a repeating notification
+  /// only the recurring components matter (time of day, plus day of month for
+  /// [NotificationRepeat.monthly]) — the plugin ignores the rest.
+  final DateTime fireAt;
+  final String languageCode;
+  final bool overdue;
+  final NotificationRepeat repeat;
+  final bool snoozable;
+
+  /// The payload stored alongside the notification.
+  ///
+  /// It carries everything the background snooze handler needs — which must be
+  /// self-contained — *and* doubles as the armed-state fingerprint: [reconcile]
+  /// re-arms only when the payload it would write differs from the one already
+  /// armed. So every field that affects the copy or the schedule belongs here,
+  /// and the key order must stay fixed for the comparison to be meaningful.
+  ///
+  /// Snoozing re-encodes this map with a `snoozed` marker, which makes the
+  /// fingerprint differ and lets the next pass snap the reminder back to its
+  /// canonical time.
+  String get payload => jsonEncode({
+        'notifId': id,
+        'title': title,
+        'body': body,
+        'langCode': languageCode,
+        'overdue': overdue,
+        'repeating': repeat == NotificationRepeat.daily,
+        'at': _scheduleKey,
+      });
+
+  // Only the parts of [fireAt] the plugin actually honours, so a repeating
+  // reminder's fingerprint stays stable from one day (or month) to the next
+  // instead of churning a re-arm out of every pass.
+  String get _scheduleKey => switch (repeat) {
+        NotificationRepeat.none => fireAt.toIso8601String(),
+        NotificationRepeat.daily => 'daily@${fireAt.hour}:${fireAt.minute}',
+        NotificationRepeat.monthly =>
+          'monthly@${fireAt.day}T${fireAt.hour}:${fireAt.minute}',
+      };
+
+  DateTimeComponents? get _matchComponents => switch (repeat) {
+        NotificationRepeat.none => null,
+        NotificationRepeat.daily => DateTimeComponents.time,
+        NotificationRepeat.monthly => DateTimeComponents.dayOfMonthAndTime,
+      };
+
+  NotificationDetails _details() {
+    final l10n = _l10nFor(languageCode);
+    if (overdue) return _overdueDetails(l10n);
+    return snoozable ? _reminderDetails(l10n) : _generalDetails();
+  }
+}
+
+/// Every reminder [entry] should currently have armed, or an empty list if it
+/// should have none (paid, or belonging to an archived bill).
+///
+/// The full ladder — "in 2 days", "tomorrow", "due today", then the overdue
+/// nagging — is a pure function of the instance, the bill and today's date, so
+/// the whole desired schedule can be built without a single platform call.
+/// Reminders whose 9:00 slot has already passed are omitted: there is nothing
+/// left to arm for them.
+///
+/// The same function covers a previous-month instance: its upcoming reminders
+/// have all lapsed, leaving exactly the open-ended overdue repeat that keeps
+/// the nagging alive past month rollover.
+List<PlannedNotification> plannedRemindersFor(
+  BillInstanceWithBill entry, {
+  required DateTime now,
+  required String languageCode,
+}) {
+  if (entry.instance.isPaid || entry.bill.isArchived) return const [];
+
+  final l10n = _l10nFor(languageCode);
+  final langCode = l10n.localeName;
+  final dueDate = DateTime(
+    entry.instance.year,
+    entry.instance.month,
+    entry.bill.dueDayOfMonth,
+  );
+  final today = DateTime(now.year, now.month, now.day);
+  final amountLabel = entry.bill.amount != null
+      ? '\$${entry.bill.amount!.toStringAsFixed(2)}'
+      : l10n.notificationBillLabel;
+
+  final plan = <PlannedNotification>[];
+
+  void addOneShot({
+    required int offset,
+    required String title,
+    required String body,
+    required DateTime fireDay,
+    bool overdue = false,
+  }) {
+    final fireAt = DateTime(fireDay.year, fireDay.month, fireDay.day, 9);
+    if (fireAt.isBefore(now)) return;
+    plan.add(
+      PlannedNotification(
+        id: _notificationId(entry.instance.id, offset),
+        title: title,
+        body: body,
+        fireAt: fireAt,
+        languageCode: langCode,
+        overdue: overdue,
+      ),
+    );
+  }
+
+  // Upcoming + due-today reminders. Each entry pairs a notification-ID slot
+  // with how many days before the due date it fires — the two are independent
+  // (the ID slot stays fixed for upgrade compatibility, the days-before drives
+  // the date).
+  const upcoming = <({int idOffset, int daysBefore})>[
+    (idOffset: _kOffsetIn2Days, daysBefore: 2),
+    (idOffset: _kOffsetTomorrow, daysBefore: 1),
+    (idOffset: _kOffsetDueToday, daysBefore: 0),
+  ];
+  final labels = [
+    l10n.notificationIn2Days,
+    l10n.notificationTomorrow,
+    l10n.notificationDueToday,
+  ];
+  for (var i = 0; i < upcoming.length; i++) {
+    addOneShot(
+      offset: upcoming[i].idOffset,
+      title: '${entry.bill.name} — ${labels[i]}',
+      body: '$amountLabel — ${l10n.dueThe(entry.bill.dueDayOfMonth)}',
+      fireDay: dueDate.subtract(Duration(days: upcoming[i].daysBefore)),
+    );
+  }
+
+  // The month matters in the overdue copy: the previous month is inside the
+  // scheduling window, and "was due the 5th" alone would read as this month's
+  // bill.
+  final overdueTitle = '${entry.bill.name} — ${l10n.overdue}';
+  final overdueBody = '$amountLabel — ${l10n.overdueSinceDate(dueDate)}';
+
+  if (dueDate.isBefore(today)) {
+    // Already overdue → an open-ended daily repeat from the next 9:00. The
+    // ladder's remaining pings are not planned, so [reconcile] retires them
+    // and they can't double up with this.
+    var start = DateTime(now.year, now.month, now.day, 9);
+    if (start.isBefore(now)) {
+      start = DateTime(now.year, now.month, now.day + 1, 9);
+    }
+    plan.add(
+      PlannedNotification(
+        id: _notificationId(entry.instance.id, _kOffsetOverdue),
+        title: overdueTitle,
+        body: overdueBody,
+        fireAt: start,
+        languageCode: langCode,
+        overdue: true,
+        repeat: NotificationRepeat.daily,
+      ),
+    );
+  } else {
+    // Not yet overdue → a week of one-shot pings starting the day after the
+    // due date, so nagging continues even if the app is never reopened. A
+    // launch during that week replaces them with the open-ended repeat above.
+    for (final step in overdueLadder(dueDate)) {
+      addOneShot(
+        offset: step.offset,
+        title: overdueTitle,
+        body: overdueBody,
+        fireDay: step.fireDay,
+        overdue: true,
+      );
+    }
+  }
+
+  return plan;
+}
+
+/// The general "a new round of bills" reminder, repeating on the 1st of every
+/// month at 9:00. Device-month based and unrelated to the month being viewed.
+PlannedNotification monthlyKickoffPlan({
+  required DateTime now,
+  required String languageCode,
+}) {
+  final l10n = _l10nFor(languageCode);
+  var first = DateTime(now.year, now.month, 1, 9);
+  // Rolls the year over on its own when now is in December.
+  if (first.isBefore(now)) first = DateTime(now.year, now.month + 1, 1, 9);
+  return PlannedNotification(
+    id: _kMonthlyKickoffId,
+    title: l10n.monthlyReminderTitle,
+    body: l10n.monthlyReminderBody,
+    fireAt: first,
+    languageCode: l10n.localeName,
+    repeat: NotificationRepeat.monthly,
+    snoozable: false,
+  );
+}
 
 // ── Action helpers ───────────────────────────────────────────────────────────
 
@@ -197,8 +423,7 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
   final snoozeTime = _computeSnoozeTime(response.actionId!);
   if (snoozeTime == null) return;
 
-  final l10n =
-      langCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
+  final l10n = _l10nFor(langCode);
   final plugin = FlutterLocalNotificationsPlugin();
   await plugin.initialize(
     const InitializationSettings(
@@ -217,9 +442,15 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
     androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
-    payload: jsonEncode(data),
+    payload: jsonEncode(_markSnoozed(data)),
   );
 }
+
+/// Tag a payload as rescheduled by the user. The marker makes it differ from
+/// the payload [NotificationService.reconcile] would write, which is what lets
+/// the next scheduling pass snap the reminder back to its canonical 9:00.
+Map<String, dynamic> _markSnoozed(Map<String, dynamic> payload) =>
+    {...payload, 'snoozed': true};
 
 tz.TZDateTime? _computeSnoozeTime(String actionId) {
   final now = tz.TZDateTime.now(tz.local);
@@ -241,11 +472,43 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  bool _initialized = false;
+  Future<void>? _initialization;
 
+  /// Set up the timezone database and the plugin. Idempotent, and safe to call
+  /// concurrently — later callers await the first call's result.
   Future<void> initialize() async {
-    if (_initialized) return;
+    final pending = _initialization;
+    if (pending != null) return pending;
 
+    final started = _initialize();
+    _initialization = started;
+    try {
+      await started;
+    } catch (_) {
+      // A failed setup must not be cached as done: the next caller retries.
+      _initialization = null;
+      rethrow;
+    }
+  }
+
+  /// Guard for every entry point that talks to the plugin.
+  ///
+  /// Startup initialization is deferred until after the first frame, so a user
+  /// action can easily arrive first — marking a bill paid seconds after launch
+  /// has to cancel its reminders, and dropping that would leave them nagging
+  /// for a paid bill. Awaiting here makes the action wait for setup instead.
+  /// Notifications are non-essential, so a failure degrades to a no-op.
+  Future<bool> _ready() async {
+    try {
+      await initialize();
+      return true;
+    } catch (e, st) {
+      debugPrint('Notification init failed: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<void> _initialize() async {
     tz.initializeTimeZones();
     try {
       final localTimezone = await FlutterTimezone.getLocalTimezone();
@@ -275,8 +538,6 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse:
           _onBackgroundNotificationResponse,
     );
-
-    _initialized = true;
   }
 
   Future<bool> requestExactAlarmsPermission() async {
@@ -312,236 +573,113 @@ class NotificationService {
     return false;
   }
 
-  /// Schedule reminders for all pending instances in the given month.
+  /// Drive the platform's schedule to match [plan], issuing only the calls that
+  /// actually change something.
   ///
-  /// For each unpaid instance this schedules, at 9:00 local time:
-  ///   • "due in 2 days" and "due tomorrow" reminders,
-  ///   • a "due today" reminder on the due date, and
-  ///   • an overdue reminder for the day after the due date.
+  /// Every zonedSchedule and cancel is handled on the Android main thread,
+  /// where the plugin rewrites its whole persisted schedule per call — so a
+  /// blind re-arm of a few hundred reminders monopolises the very thread that
+  /// forwards touch events, and the app stops responding for seconds. Since
+  /// both the IDs and the copy are pure functions of the database, the armed
+  /// state can simply be read back once and diffed: in the steady state this
+  /// pass costs a single platform call and issues nothing.
   ///
-  /// All of these are scheduled *proactively* from the due date, so they fire
-  /// even if the app is never reopened after the bill rolls over. If a bill is
-  /// already past due at scheduling time, the overdue reminder becomes a daily
-  /// repeating notification instead of a single ping.
-  Future<void> scheduleForMonth(
-    List<BillInstanceWithBill> instances,
-    int year,
-    int month, {
-    String languageCode = 'en',
+  /// [managedInstanceIds] scopes what may be *retired*: any armed notification
+  /// in those instances' ID ranges that [plan] doesn't ask for is cancelled.
+  /// Instances outside the set are left untouched, so a pass over one month
+  /// can't disarm another's.
+  ///
+  /// The first run after an upgrade that changes the payload format re-arms
+  /// everything once, because no armed payload can match. That is the intended
+  /// cost of making the fingerprint exact.
+  Future<void> reconcile({
+    required List<PlannedNotification> plan,
+    required Set<int> managedInstanceIds,
   }) async {
-    if (!_initialized) return;
+    if (!await _ready()) return;
 
-    final l10n = languageCode == 'es'
-        ? AppLocalizationsEs()
-        : AppLocalizationsEn();
+    final pending = await _plugin.pendingNotificationRequests();
+    final armed = {for (final request in pending) request.id: request.payload};
+    final desiredIds = {for (final notification in plan) notification.id};
 
-    var scheduledAny = false;
-    for (final entry in instances) {
-      // Archived bills keep their instances visible but must not nag —
-      // archiving cancels their reminders, and re-arming here would undo that.
-      if (entry.instance.isPaid || entry.bill.isArchived) continue;
-      if (scheduledAny) {
+    // Only slots belonging to the managed instances are ours to cancel. The
+    // reserved IDs are excluded because they fall inside some hypothetical
+    // instance's range (1000001 would be instance 100000, slot 1) and must
+    // outlive any pass.
+    final managedIds = <int>{
+      for (final instanceId in managedInstanceIds)
+        for (var offset = 0; offset < 10; offset++)
+          _notificationId(instanceId, offset),
+    }..removeAll(_kReservedIds);
+
+    var issued = 0;
+    Future<void> pace() async {
+      if (issued++ > 0) {
         await Future<void>.delayed(kNotificationSchedulePacing);
       }
-      scheduledAny = true;
-      await _scheduleRemindersForInstance(entry, year, month, l10n);
+    }
+
+    for (final notification in plan) {
+      if (armed[notification.id] == notification.payload) continue;
+      await pace();
+      await _schedule(notification);
+    }
+
+    for (final id in armed.keys) {
+      if (desiredIds.contains(id) || !managedIds.contains(id)) continue;
+      await pace();
+      await _plugin.cancel(id);
     }
   }
 
-  /// Schedule the general "a new round of bills" reminder that repeats on the
-  /// 1st of every month at 9:00 local time. This is device-month based and has
-  /// nothing to do with the month being viewed, so it's scheduled once at
-  /// startup (and again on a language change). The fixed ID means re-calling it
-  /// simply overwrites the existing schedule.
+  Future<void> _schedule(PlannedNotification notification) async {
+    final fireAt = tz.TZDateTime(
+      tz.local,
+      notification.fireAt.year,
+      notification.fireAt.month,
+      notification.fireAt.day,
+      notification.fireAt.hour,
+      notification.fireAt.minute,
+    );
+    await _plugin.zonedSchedule(
+      notification.id,
+      notification.title,
+      notification.body,
+      fireAt,
+      notification._details(),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: notification._matchComponents,
+      payload: notification.payload,
+    );
+  }
+
+  /// Re-emit the monthly kickoff, used when the language changes. Unconditional
+  /// rather than reconciled: it's a single call on a rare user action.
   Future<void> scheduleMonthlyKickoff({String languageCode = 'en'}) async {
-    if (!_initialized) return;
-    final l10n =
-        languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(tz.local, now.year, now.month, 1, 9, 0);
-    if (scheduledDate.isBefore(now)) {
-      final nextYear = now.month == 12 ? now.year + 1 : now.year;
-      final nextMonth = now.month == 12 ? 1 : now.month + 1;
-      scheduledDate = tz.TZDateTime(tz.local, nextYear, nextMonth, 1, 9, 0);
-    }
-
-    await _plugin.zonedSchedule(
-      _kMonthlyKickoffId,
-      l10n.monthlyReminderTitle,
-      l10n.monthlyReminderBody,
-      scheduledDate,
-      _generalDetails(),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+    if (!await _ready()) return;
+    await _schedule(
+      monthlyKickoffPlan(now: DateTime.now(), languageCode: languageCode),
     );
   }
 
-  Future<void> _scheduleRemindersForInstance(
-    BillInstanceWithBill entry,
-    int year,
-    int month,
-    AppLocalizations l10n,
-  ) async {
-    final dueDay = entry.bill.dueDayOfMonth;
-    final dueDate = DateTime(year, month, dueDay);
-    final now = DateTime.now();
-    final todayDate = DateTime(now.year, now.month, now.day);
-    final amountLabel = entry.bill.amount != null
-        ? '\$${entry.bill.amount!.toStringAsFixed(2)}'
-        : l10n.notificationBillLabel;
-
-    // Upcoming + due-today reminders (one-shot, at 9:00 on their day).
-    // Each entry pairs a notification-ID slot with how many days before the
-    // due date it fires — the two are independent (the ID slot stays fixed for
-    // upgrade compatibility, the days-before drives the date).
-    final upcoming = <({int idOffset, int daysBefore, String label})>[
-      (idOffset: _kOffsetIn2Days, daysBefore: 2, label: l10n.notificationIn2Days),
-      (idOffset: _kOffsetTomorrow, daysBefore: 1, label: l10n.notificationTomorrow),
-      (idOffset: _kOffsetDueToday, daysBefore: 0, label: l10n.notificationDueToday),
-    ];
-    for (final reminder in upcoming) {
-      final fireDay = dueDate.subtract(Duration(days: reminder.daysBefore));
-      await _scheduleOneShot(
-        notifId: _notificationId(entry.instance.id, reminder.idOffset),
-        title: '${entry.bill.name} — ${reminder.label}',
-        body: '$amountLabel — ${l10n.dueThe(dueDay)}',
-        fireDay: fireDay,
-        l10n: l10n,
-      );
-    }
-
-    // Overdue reminder — a daily nag until the bill is paid.
-    if (dueDate.isBefore(todayDate)) {
-      // Already overdue → open-ended daily repeating reminder from the next
-      // 9:00 (a repeating schedule always snaps to the next time-of-day
-      // match, which is exactly right here).
-      await _scheduleOverdueReminder(entry, l10n);
-    } else {
-      // Not yet overdue → a week of one-shot pings starting the day after the
-      // due date, so nagging continues even if the app is never reopened.
-      // Launches during that week (or after it) replace this with the
-      // open-ended repeat above.
-      final overdueTitle = '${entry.bill.name} — ${l10n.overdue}';
-      final overdueBody =
-          '$amountLabel — ${l10n.overdueSinceDate(dueDate)}';
-      for (final step in overdueLadder(dueDate)) {
-        await _scheduleOneShot(
-          notifId: _notificationId(entry.instance.id, step.offset),
-          title: overdueTitle,
-          body: overdueBody,
-          fireDay: step.fireDay,
-          l10n: l10n,
-          overdue: true,
-        );
-      }
-    }
-  }
-
-  /// Schedule a single notification at 9:00 on [fireDay]. Days whose 9:00 slot
-  /// is already in the past are skipped.
-  Future<void> _scheduleOneShot({
-    required int notifId,
-    required String title,
-    required String body,
-    required DateTime fireDay,
-    required AppLocalizations l10n,
-    bool overdue = false,
-  }) async {
-    final now = tz.TZDateTime.now(tz.local);
-    final scheduledDate =
-        tz.TZDateTime(tz.local, fireDay.year, fireDay.month, fireDay.day, 9, 0);
-
-    if (scheduledDate.isBefore(now)) return; // don't schedule in the past
-
-    final payload = jsonEncode({
-      'notifId': notifId,
-      'title': title,
-      'body': body,
-      'langCode': l10n.localeName,
-      'overdue': overdue,
-    });
-
-    await _plugin.zonedSchedule(
-      notifId,
-      title,
-      body,
-      scheduledDate,
-      overdue ? _overdueDetails(l10n) : _reminderDetails(l10n),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: payload,
-    );
-  }
-
-  Future<void> _scheduleOverdueReminder(
-    BillInstanceWithBill entry,
-    AppLocalizations l10n,
-  ) async {
-    // The month matters in the copy: the past-month re-arm pass nags for old
-    // instances, and "was due the 5th" alone reads as this month's bill.
-    final dueDate = DateTime(
-      entry.instance.year,
-      entry.instance.month,
-      entry.bill.dueDayOfMonth,
-    );
-    final title = '${entry.bill.name} — ${l10n.overdue}';
-    final body =
-        '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel}'
-        ' — ${l10n.overdueSinceDate(dueDate)}';
-    final notifId = _notificationId(entry.instance.id, _kOffsetOverdue);
-
-    // Take over from any still-pending ladder pings — the open-ended repeat
-    // replaces slot 0, and the remaining one-shots would double up with it.
-    for (final offset in _kOffsetsOverdueLadder) {
-      await _plugin.cancel(_notificationId(entry.instance.id, offset));
-    }
-    // 'repeating' lets the snooze handler know this schedule is the open-ended
-    // daily repeat — after the ladder takeover it's the *only* reminder left
-    // for this bill, so a snooze must re-arm it as repeating, not downgrade it
-    // to a one-shot that would end the nagging for good.
-    final payload = jsonEncode({
-      'notifId': notifId,
-      'title': title,
-      'body': body,
-      'langCode': l10n.localeName,
-      'overdue': true,
-      'repeating': true,
-    });
-
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, 9, 0);
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-
-    await _plugin.zonedSchedule(
-      notifId,
-      title,
-      body,
-      scheduledDate,
-      _overdueDetails(l10n),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
-      payload: payload,
-    );
-  }
-
-  /// Public entry point for rescheduling an overdue reminder outside of
-  /// [scheduleForMonth] — used when a payment is undone on a past-due bill.
+  /// Re-arm one instance's reminders — used when a payment is undone and the
+  /// bill turns out to be past due again. Reconciled over that instance alone,
+  /// so the ladder pings the open-ended overdue repeat replaces are retired
+  /// with it.
   Future<void> scheduleOverdueReminderForInstance(
     BillInstanceWithBill entry, {
     String languageCode = 'en',
   }) async {
-    if (!_initialized) return;
-    final l10n =
-        languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
-    await _scheduleOverdueReminder(entry, l10n);
+    await reconcile(
+      plan: plannedRemindersFor(
+        entry,
+        now: DateTime.now(),
+        languageCode: languageCode,
+      ),
+      managedInstanceIds: {entry.instance.id},
+    );
   }
 
   Future<void> scheduleTestNotification(
@@ -549,16 +687,14 @@ class NotificationService {
     int secondsFromNow = 10,
     String languageCode = 'en',
   }) async {
-    if (!_initialized) return;
-    final l10n = languageCode == 'es'
-        ? AppLocalizationsEs()
-        : AppLocalizationsEn();
+    if (!await _ready()) return;
+    final l10n = _l10nFor(languageCode);
     final langCode = l10n.localeName;
     final title = '${entry.bill.name} — ${l10n.notificationTomorrow}';
     final body =
         '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel} — ${l10n.dueThe(entry.bill.dueDayOfMonth)}';
     final payload = jsonEncode({
-      'notifId': 999999,
+      'notifId': _kTestNotificationId,
       'title': title,
       'body': body,
       'langCode': langCode,
@@ -568,7 +704,7 @@ class NotificationService {
       Duration(seconds: secondsFromNow),
     );
     await _plugin.zonedSchedule(
-      999999,
+      _kTestNotificationId,
       title,
       body,
       scheduledDate,
@@ -584,7 +720,7 @@ class NotificationService {
   /// The foreground response callback isn't invoked in that case, so the tap
   /// has to be recovered from the launch details. Call once on startup.
   Future<void> handleLaunchSnooze() async {
-    if (!_initialized) return;
+    if (!await _ready()) return;
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details == null || !details.didNotificationLaunchApp) return;
     final response = details.notificationResponse;
@@ -618,8 +754,7 @@ class NotificationService {
     final snoozeTime = _computeSnoozeTime(response.actionId!);
     if (snoozeTime == null) return;
 
-    final l10n =
-        langCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
+    final l10n = _l10nFor(langCode);
 
     await _plugin.cancel(notifId);
     await _plugin.zonedSchedule(
@@ -632,7 +767,7 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: isRepeating ? DateTimeComponents.time : null,
-      payload: jsonEncode(data),
+      payload: jsonEncode(_markSnoozed(data)),
     );
 
     _showSnoozeConfirmation(snoozeTime, l10n);
@@ -661,21 +796,18 @@ class NotificationService {
     }
   }
 
-  Future<void> cancelForInstance(int instanceId) async {
-    if (!_initialized) return;
-    for (final offset in [..._kAllOffsets, ..._kOffsetsOverdueLadder]) {
-      await _plugin.cancel(_notificationId(instanceId, offset));
-    }
-  }
+  /// Retire every reminder of [instanceIds] — for bills being paid, archived or
+  /// deleted. Reconciled against an empty plan, so only the slots actually
+  /// armed cost a call: deleting a bill with a year of instances issues a
+  /// handful of cancels instead of ten per instance.
+  Future<void> cancelForInstances(Iterable<int> instanceIds) =>
+      reconcile(plan: const [], managedInstanceIds: instanceIds.toSet());
+
+  Future<void> cancelForInstance(int instanceId) =>
+      cancelForInstances([instanceId]);
 
   Future<void> cancelAll() async {
-    if (!_initialized) return;
+    if (!await _ready()) return;
     await _plugin.cancelAll();
-  }
-
-  int _notificationId(int instanceId, int offset) {
-    // Combine instanceId and reminder offset into a unique int.
-    // instanceId * 10 + offset (offset is one of _kAllOffsets, 0..3).
-    return instanceId * 10 + offset;
   }
 }

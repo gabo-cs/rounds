@@ -115,25 +115,17 @@ class SettingsScreen extends ConsumerWidget {
                           .requestExactAlarmsPermission();
                     } else {
                       await NotificationService.instance.cancelAll();
-                      await resetNotificationSignatures(
-                        ref.read(sharedPreferencesProvider),
-                      );
                     }
                     notifier.setNotificationsEnabled(enabled);
                     if (enabled) {
                       // Re-arm now — startup scheduling only runs on launch, so
                       // without this the toggle wouldn't take effect until the
                       // next app start.
-                      final languageCode =
-                          ref.read(settingsProvider).languageCode;
-                      await NotificationService.instance
-                          .scheduleMonthlyKickoff(languageCode: languageCode);
-                      await scheduleUpcomingReminders(
+                      await reconcileNotifications(
                         billsRepo: ref.read(billsRepositoryProvider),
                         instancesRepo:
                             ref.read(billInstancesRepositoryProvider),
-                        prefs: ref.read(sharedPreferencesProvider),
-                        languageCode: languageCode,
+                        languageCode: ref.read(settingsProvider).languageCode,
                       );
                     }
                   },
@@ -287,13 +279,11 @@ class SettingsScreen extends ConsumerWidget {
       // Reminders scheduled before the import reference instance IDs from the
       // replaced data — rebuild the schedule from scratch.
       await NotificationService.instance.cancelAll();
-      await resetNotificationSignatures(ref.read(sharedPreferencesProvider));
       final settings = ref.read(settingsProvider);
       if (settings.notificationsEnabled) {
-        await scheduleUpcomingReminders(
+        await reconcileNotifications(
           billsRepo: ref.read(billsRepositoryProvider),
           instancesRepo: ref.read(billInstancesRepositoryProvider),
-          prefs: ref.read(sharedPreferencesProvider),
           languageCode: settings.languageCode,
         );
       }
