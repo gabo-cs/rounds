@@ -10,18 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Never let a notification-setup failure strand the app on the splash screen
-  // — notifications are non-essential to launching, so degrade gracefully.
-  try {
-    await NotificationService.instance.initialize();
-    // Recover a snooze tap that cold-started the app from a terminated state.
-    await NotificationService.instance.handleLaunchSnooze();
-  } catch (e, st) {
-    debugPrint('Notification init failed: $e\n$st');
-  }
+
+  // The only thing the first frame genuinely waits on: the theme and locale
+  // come from here, so reading it later would mean rendering the wrong ones
+  // and flashing.
   final prefs = await SharedPreferences.getInstance();
-  final languageCode = prefs.getString('language_code') ?? 'en';
-  final notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
 
   // Share one container with the app so startup scheduling and the UI use the
   // same database instance.
@@ -43,22 +36,44 @@ void main() async {
     ),
   );
 
-  // Notification scheduling fires dozens of platform-channel calls whose
-  // responses land back on the UI isolate. Doing that during cold start floods
-  // the UI thread right when the user's first swipe wants those frames, which
-  // shows up as early stutter that clears once the calls drain. Defer it until
-  // after the first frame and a short settle — the reminders are for future
-  // days, so the delay is immaterial.
+  // Nothing about notifications is on the path to the first frame, and all of
+  // it is expensive: initializing the timezone database is hundreds of
+  // milliseconds of parsing on the UI isolate, and every platform call behind
+  // it is serviced by the Android main thread — the same thread that delivers
+  // touch events. Run it after the first frame, then let the UI settle before
+  // touching the platform, so the app is interactive from the moment it
+  // appears. The reminders are for future days; seconds of delay are
+  // immaterial.
   WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(
+      const Duration(seconds: 2),
+      () => _setUpNotifications(container, prefs),
+    );
+  });
+}
+
+Future<void> _setUpNotifications(
+  ProviderContainer container,
+  SharedPreferences prefs,
+) async {
+  final languageCode = prefs.getString('language_code') ?? 'en';
+
+  // A notification-setup failure must never take the app down with it —
+  // notifications are non-essential to using it.
+  try {
+    await NotificationService.instance.initialize();
+    // Recover a snooze tap that cold-started the app from a terminated state.
+    await NotificationService.instance.handleLaunchSnooze();
+
     // Respect the in-app toggle: scheduling here would silently re-arm
     // reminders the user turned off.
-    if (!notificationsEnabled) return;
-    Future.delayed(const Duration(seconds: 2), () async {
-      await reconcileNotifications(
-        billsRepo: container.read(billsRepositoryProvider),
-        instancesRepo: container.read(billInstancesRepositoryProvider),
-        languageCode: languageCode,
-      );
-    });
-  });
+    if (!(prefs.getBool('notifications_enabled') ?? true)) return;
+    await reconcileNotifications(
+      billsRepo: container.read(billsRepositoryProvider),
+      instancesRepo: container.read(billInstancesRepositoryProvider),
+      languageCode: languageCode,
+    );
+  } catch (e, st) {
+    debugPrint('Notification setup failed: $e\n$st');
+  }
 }
