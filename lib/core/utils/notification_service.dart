@@ -3,7 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+// The 10-year database, not latest_all: initializing it parses the whole blob
+// synchronously on the UI isolate, and latest_all's is six times bigger for
+// transitions we can never reach — nothing here is scheduled more than about
+// thirteen months out.
+import 'package:timezone/data/latest_10y.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
