@@ -3,11 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-// The 10-year database, not latest_all: initializing it parses the whole blob
-// synchronously on the UI isolate, and latest_all's is six times bigger for
-// transitions we can never reach — nothing here is scheduled more than about
-// thirteen months out.
-import 'package:timezone/data/latest_10y.dart' as tz;
+// latest_all, despite being the biggest of the three bundled databases: it is
+// the only one carrying the full 596 zones. `latest` and `latest_10y` ship 431
+// — they drop legacy aliases (Asia/Calcutta, US/Michigan) but also current
+// canonical zones (America/Ciudad_Juarez, America/Nuuk, America/Punta_Arenas,
+// Asia/Yangon, Pacific/Bougainville). A device reporting one of those would
+// fail the lookup below and silently fall back, putting every reminder hours
+// off. Initialization is deferred well past the first frame, so its parse cost
+// buys nothing worth that risk.
+import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -80,6 +84,24 @@ const _kReservedIds = {_kMonthlyKickoffId, _kTestNotificationId};
 /// [NotificationService.reconcile] makes such runs rare; the pacing is what
 /// keeps the rare ones from being felt.
 const kNotificationSchedulePacing = Duration(milliseconds: 16);
+
+/// The `Etc/GMT` zone closest to [offset], for when the device's real zone
+/// can't be resolved.
+///
+/// A synthetic [tz.Location] would not survive the trip: iOS is handed the zone
+/// *name* as text and re-resolves it against Apple's database, so the fallback
+/// has to be a name both databases know. The `Etc/GMT` zones qualify.
+///
+/// Two limits, each far smaller than the UTC this replaces. The names exist on
+/// whole hours only, so a half-hour zone lands up to 30 minutes off. And they
+/// carry no DST, so a reminder on the far side of the next transition is an
+/// hour off.
+String etcGmtZoneName(Duration offset) {
+  // POSIX sign convention, inverted from the usual one: Etc/GMT+5 is UTC-5.
+  // The names run from Etc/GMT+12 (UTC-12) to Etc/GMT-14 (UTC+14).
+  final hours = (offset.inMinutes / 60).round().clamp(-12, 14);
+  return hours <= 0 ? 'Etc/GMT+${-hours}' : 'Etc/GMT-$hours';
+}
 
 AppLocalizations _l10nFor(String languageCode) =>
     languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn();
@@ -510,12 +532,7 @@ class NotificationService {
 
   Future<void> _initialize() async {
     tz.initializeTimeZones();
-    try {
-      final localTimezone = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(localTimezone));
-    } catch (_) {
-      // fall back to UTC if timezone detection fails
-    }
+    await _setLocalTimezone();
 
     const androidSettings =
         AndroidInitializationSettings('ic_stat_rounds');
@@ -538,6 +555,32 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse:
           _onBackgroundNotificationResponse,
     );
+  }
+
+  /// Point [tz.local] at the device's zone, or as close as we can get.
+  ///
+  /// Detection can fail, and the database can lack the reported zone. Falling
+  /// back to UTC — as this used to — fires every reminder at 9:00 UTC, which is
+  /// the middle of the night across much of the world. The device's own offset
+  /// is a far better guess.
+  Future<void> _setLocalTimezone() async {
+    try {
+      tz.setLocalLocation(
+        tz.getLocation(await FlutterTimezone.getLocalTimezone()),
+      );
+      return;
+    } catch (e) {
+      debugPrint('Timezone lookup failed ($e); using the device offset');
+    }
+
+    try {
+      tz.setLocalLocation(
+        tz.getLocation(etcGmtZoneName(DateTime.now().timeZoneOffset)),
+      );
+    } catch (e) {
+      debugPrint('Offset fallback failed ($e); using UTC');
+      tz.setLocalLocation(tz.UTC);
+    }
   }
 
   Future<bool> requestExactAlarmsPermission() async {
