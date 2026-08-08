@@ -287,8 +287,30 @@ All logic in `core/utils/notification_service.dart` (singleton,
 - **Release-build trap**: `ic_stat_rounds` is only referenced by name from Dart, so
   R8 would strip it — the `<meta-data>` entry in `AndroidManifest.xml` exists solely
   to pin it. Any new drawable referenced only from Dart needs the same treatment.
-- Timezone setup can fail → falls back to UTC silently; `zonedSchedule` with
-  `exactAllowWhileIdle` everywhere; exact-alarm permission is requested from Settings.
+- **Timezone data is `latest_all` on purpose.** It's the biggest of the three
+  bundled databases (537 KB, ~200 ms of parsing) but the only one with all 596
+  zones — `latest` and `latest_10y` ship 431, dropping legacy aliases *and*
+  current canonical zones (`America/Ciudad_Juarez`, `America/Nuuk`,
+  `America/Punta_Arenas`, `Asia/Yangon`, `Pacific/Bougainville`). A device
+  reporting one of those would fail the lookup and fall back. Don't shrink it to
+  save startup time — that cost is already off the critical path (see Startup
+  sequencing), so the trade buys nothing.
+- **Timezone fallback ladder** (`_setLocalTimezone`): the reported zone, then the
+  `Etc/GMT±N` zone nearest the device's own UTC offset, then UTC. The middle rung
+  exists because plain UTC fired every 9:00 reminder at 9:00 UTC — 4 AM in
+  Bogotá. `DateTime.now().timeZoneOffset` is a good backstop precisely because it
+  comes from the Dart VM, not the platform channel that just failed.
+  `etcGmtZoneName` is public so the **inverted POSIX sign** (`Etc/GMT+5` is
+  UTC-5) is pinned by a test that resolves each name against the real database.
+- **iOS and Android consume the schedule differently** — worth knowing before
+  touching anything time-related. Android gets an absolute
+  `millisecondsSinceEpoch` computed in Dart, so the bundled database decides the
+  real fire time. iOS gets the zone *name* as text (`location.name`) and
+  re-resolves it with `NSTimeZone` against Apple's database. A synthetic
+  `tz.Location` therefore works on Android and breaks on iOS — the fallback has
+  to be a name both databases know, which is why it's `Etc/GMT±N`.
+- `zonedSchedule` with `exactAllowWhileIdle` everywhere; exact-alarm permission
+  is requested from Settings.
 
 ## Localization
 
@@ -347,6 +369,13 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
   undo-payment, import) must check `settings.notificationsEnabled` — they all do
   now; keep it that way when adding new scheduling paths. `cancelAll()` needs no
   bookkeeping any more: the next pass sees an empty pending list and re-arms.
+- **iOS caps pending local notifications at 64**, keeping the soonest and
+  silently discarding the rest. The plan is up to 10 slots per unpaid instance
+  across three months, so roughly 7 bills reach the cap. The reconciler then
+  reads back fewer than it planned, treats the discarded ones as missing, and
+  re-arms them every launch without ever converging. Android has no such limit,
+  so this is latent, not live — but it needs a shorter horizon (or fewer slots
+  per instance) on iOS before that platform is taken seriously.
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
 - Amounts are `double` + hardcoded `$` formatting; fine for a personal app, know it
   before building anything money-math heavy.
