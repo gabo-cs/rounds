@@ -121,7 +121,7 @@ class SettingsScreen extends ConsumerWidget {
                       // Re-arm now — startup scheduling only runs on launch, so
                       // without this the toggle wouldn't take effect until the
                       // next app start.
-                      await reconcileNotifications(
+                      await refreshReminderSchedule(
                         billsRepo: ref.read(billsRepositoryProvider),
                         instancesRepo:
                             ref.read(billInstancesRepositoryProvider),
@@ -281,7 +281,7 @@ class SettingsScreen extends ConsumerWidget {
       await NotificationService.instance.cancelAll();
       final settings = ref.read(settingsProvider);
       if (settings.notificationsEnabled) {
-        await reconcileNotifications(
+        await refreshReminderSchedule(
           billsRepo: ref.read(billsRepositoryProvider),
           instancesRepo: ref.read(billInstancesRepositoryProvider),
           languageCode: settings.languageCode,

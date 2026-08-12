@@ -80,7 +80,7 @@ final monthInstancesProvider = StreamProvider.autoDispose
         // once, and one shared subscription avoids piling redundant round-trips
         // onto the just-spawned drift isolate. Notification scheduling is *not*
         // done here — it's device-month based and handled at startup by
-        // [reconcileNotifications], independent of what's viewed.
+        // [refreshReminderSchedule], independent of what's viewed.
         final activeBills = await ref.watch(activeBillsProvider.future);
         await instancesRepo.ensureInstancesExist(
           activeBills,
@@ -92,21 +92,20 @@ final monthInstancesProvider = StreamProvider.autoDispose
       yield* instancesRepo.watchInstancesForMonth(month.year, month.month);
     });
 
-/// Bring the platform's notification schedule in line with the database.
+/// Re-arm the rolling window of reminders. Called on every launch.
 ///
-/// Builds the reminders that *should* be armed across a three-month window —
-/// the previous month (whose unpaid bills keep nagging), the current one, and
-/// the next — and hands them to [NotificationService.reconcile], which issues
-/// only the differences. The window is anchored to the device's date, not to
-/// the month being browsed, and slides forward on its own.
+/// The pass is unconditional and blind — it re-issues everything due within
+/// [kReminderHorizon] rather than asking the platform what is already armed.
+/// It has to be: alarms are cancelled without notice by a force-stop or an OEM
+/// battery manager, and Android cannot be asked whether one survived. Re-arming
+/// is the only repair, so it runs every time.
 ///
-/// Because the pass is a diff, running it costs a single platform call when
-/// nothing has changed. That is what lets it run unconditionally on every
-/// launch and still serve as the safety net that restores alarms lost to a
-/// force-stop or an OEM battery killer — the previous design could only afford
-/// to do that once a day, and paid for it with a storm of platform calls that
-/// blocked touch input for seconds after startup.
-Future<void> reconcileNotifications({
+/// What makes that cheap is the horizon. The cost tracks how many bills fall
+/// due soon — a handful — not how many bills exist times how many months are
+/// pre-scheduled. An earlier design pre-armed three months at ten slots per
+/// bill, which is what made a blind pass unaffordable and pushed us into
+/// trusting a platform mirror that lies.
+Future<void> refreshReminderSchedule({
   required BillsRepository billsRepo,
   required BillInstancesRepository instancesRepo,
   required String languageCode,
@@ -118,8 +117,8 @@ Future<void> reconcileNotifications({
   final next = DateTime(today.year, today.month + 1);
   final prev = current.previousMonth;
 
-  // Instances are generated lazily when a month is viewed, so the months we
-  // schedule for may not exist yet on a launch that never reaches them.
+  // Instances are generated lazily when a month is viewed, so the months the
+  // horizon reaches into may not exist yet on a launch that never opens them.
   final activeBills = await billsRepo.watchAllActiveBills().first;
   for (final month in [current, next]) {
     await instancesRepo.ensureInstancesExist(
@@ -129,33 +128,35 @@ Future<void> reconcileNotifications({
     );
   }
 
-  final windowed = <BillInstanceWithBill>[];
+  // These three months are what the horizon can touch: back one for overdue
+  // nagging, forward one because 35 days crosses a month boundary. Which of
+  // their instances actually cost a platform call is decided per-instance by
+  // [plannedRemindersFor], not here.
+  final candidates = <BillInstanceWithBill>[];
   for (final month in [prev, current, next]) {
-    windowed.addAll(
+    candidates.addAll(
       await instancesRepo.watchInstancesForMonth(month.year, month.month).first,
     );
   }
 
-  // Unpaid instances older than the window have outlived the nagging horizon.
-  // Managing their IDs with nothing planned for them is what retires their
-  // reminders, including repeats armed before this cutoff existed.
+  await NotificationService.instance.scheduleMonthlyKickoff(
+    languageCode: languageCode,
+  );
+  await NotificationService.instance.applyReminderPlans([
+    for (final entry in candidates)
+      plannedRemindersFor(entry, now: today, languageCode: languageCode),
+  ]);
+
+  // Unpaid instances older than the previous month have outlived the nagging
+  // horizon. Retire them outright, including any open-ended overdue repeat
+  // armed before this cutoff existed.
   final stale = await instancesRepo.getUnpaidInstancesBefore(
     prev.year,
     prev.month,
   );
-
-  await NotificationService.instance.reconcile(
-    plan: [
-      monthlyKickoffPlan(now: today, languageCode: languageCode),
-      for (final entry in windowed)
-        ...plannedRemindersFor(entry, now: today, languageCode: languageCode),
-    ],
-    // Every instance in the window is managed, not just the ones with
-    // reminders planned: that is what makes the pass convergent. A bill that
-    // was paid or archived while a cancel was lost has its leftovers cleaned
-    // up here instead of nagging forever.
-    managedInstanceIds: {
-      for (final entry in [...windowed, ...stale]) entry.instance.id,
-    },
-  );
+  if (stale.isNotEmpty) {
+    await NotificationService.instance.cancelForInstances(
+      [for (final entry in stale) entry.instance.id],
+    );
+  }
 }

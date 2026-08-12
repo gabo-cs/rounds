@@ -195,7 +195,7 @@ Every line ordering there is deliberate and commented:
    scheduling and the UI use the same DB instance.
 3. `container.read(activeBillsProvider)` warms the drift isolate before first frame.
 4. *All* notification work — plugin/timezone init, `handleLaunchSnooze()`, the
-   reconciliation pass — happens after the first frame **+ 2s settle**, wrapped in
+   re-arm pass — happens after the first frame **+ 2s settle**, wrapped in
    try/catch. Initializing the timezone DB is hundreds of ms of parsing on the UI
    isolate, and every platform call behind it is serviced by the Android main
    thread, which is also what delivers touch events. Keep any new startup work
@@ -211,50 +211,53 @@ All logic in `core/utils/notification_service.dart` (singleton,
 `NotificationService.instance`). Key invariants:
 
 - **ID scheme**: `instanceId * 10 + offset`, offsets 0–3 (overdue=0, tomorrow=1,
-  in-2-days=2, due-today=3) plus 4–9 (overdue ladder, days 2–7 past due). Offset
+  in-2-days=2, due-today=3) plus 4–5 (overdue ladder, days 2–3 past due). Offset
   values are frozen for upgrade compatibility — re-scheduling must overwrite, not
-  duplicate. Reserved IDs: 999999 (test), 1000001 (monthly kickoff). New
-  notification kinds need IDs that can't collide with `instanceId * 10 + n`.
-- **Scheduling model — a reconciler, not a re-armer.** This is the load-bearing
-  design decision; don't regress it into "just schedule everything again".
-  - `plannedRemindersFor()` and `monthlyKickoffPlan()` are **pure functions**
-    returning `PlannedNotification` data — no platform calls. `reconcileNotifications`
-    (in `home_providers.dart`) builds the plan for a three-month window (previous,
-    current, next — anchored to the *device* date, not the browsed month), and
-    `NotificationService.reconcile` reads back `pendingNotificationRequests()` once
-    and issues **only the differences**.
-  - **Why**: every `zonedSchedule`/`cancel` runs on the Android main thread, where
-    flutter_local_notifications rewrites its whole persisted schedule (Gson load +
-    save) per call. That thread also forwards touch events, so a blind re-arm of a
-    few hundred reminders made the app swallow input for seconds after launch.
-  - The diff makes steady state **one platform call**, so the pass runs
-    unconditionally on every launch — the lost-alarm safety net (force-stop, OEM
-    battery killers) and the overdue takeover now recover on the spot instead of
-    once a day.
-  - **The armed-state fingerprint is the notification payload.** `reconcile` re-arms
-    when the payload it would write differs from the armed one, so anything
-    affecting the copy *or* the schedule must be in `PlannedNotification.payload`,
-    and its key order must stay fixed. Repeating reminders deliberately fingerprint
-    only the components the plugin honours (time of day, day of month) — otherwise
-    they'd churn a re-arm out of every pass. A payload-format change costs one
-    full re-arm on the first launch after the upgrade; that's the accepted price.
-  - `managedInstanceIds` scopes what may be *cancelled*: any armed ID in those
-    instances' 0–9 slot ranges that the plan doesn't ask for. Every instance in
-    the window is managed, not just the ones with reminders planned — that's what
-    makes the pass converge and clean up after a lost cancel. Reserved IDs are
-    excluded so they can never be swept up.
+  duplicate. **6–9 are retired**: they held days 4–7 of the original seven-day
+  ladder. Nothing plans them, but upgraded installs still have them armed, so
+  every clearing path (`_kEveryOffset`, the overdue takeover) keeps cancelling
+  them until they expire. Reserved IDs: 999999 (test), 1000001 (monthly kickoff).
+  New notification kinds need IDs that can't collide with `instanceId * 10 + n`.
+- **Scheduling model — a small rolling window, re-armed blindly.** This is the
+  load-bearing design decision. Do **not** "optimize" it back into a diff
+  against `pendingNotificationRequests()`; that has been tried and it broke
+  reminders outright. See the trap below.
+  - `plannedRemindersFor()` and `monthlyKickoffPlan()` are **pure functions** —
+    no platform calls, fully unit-tested. `refreshReminderSchedule`
+    (`home_providers.dart`) builds the plans, `applyReminderPlans` issues them.
+  - **The window is a span of days, not a count of months**:
+    `kReminderHorizon` = 35. Cost then tracks *how many bills fall due soon*, not
+    bills × slots × months. 35 because due days are capped at 28, so consecutive
+    due dates are ≤31 days apart — the next occurrence of every bill is always
+    armed, with slack. `test/reminder_plan_test.dart` proves this exhaustively
+    across every due-day/launch-day pair; don't lower it without re-reading that.
+  - **The pass is blind and unconditional.** It re-issues everything, every
+    launch, without asking what is armed. Re-issuing *is* the repair.
+  - **The trap — `pendingNotificationRequests()` lies.** It reads the plugin's
+    own SharedPreferences mirror (`loadScheduledNotifications`), *not*
+    AlarmManager. A force-stop or an OEM battery manager cancels the real alarms
+    and leaves that mirror perfectly intact. Anything that trusts it concludes
+    "all armed", repairs nothing, and goes silent **permanently** — the only
+    recovery paths are `BOOT_COMPLETED` and `MY_PACKAGE_REPLACED` (the plugin's
+    `rescheduleNotifications`, called from its boot receiver and nowhere else),
+    and a force-stopped app doesn't even receive the boot broadcast. Android
+    offers no honest way to ask whether an alarm survived.
+  - `ReminderPlan` is `(arm, clear)`. `clear` is always derived from the *plan*
+    — the ladder slots the overdue repeat supersedes, or slot 0 as a backstop for
+    a settled bill whose cancel was lost — never from what the platform reports.
   - Overdue nagging reaches back one month, no further: unpaid instances older
-    than the window are managed with nothing planned, which retires them.
-  - `kNotificationSchedulePacing` yields between *individual* calls (not per
-    instance) so the rare real bursts still leave the main thread reachable.
-  - Reminders are scheduled from the due date forward so they fire even if the app
-    is never reopened. Paid and archived bills plan nothing.
+    than that are retired via `cancelForInstances`.
+  - `kNotificationSchedulePacing` yields between individual calls so a pass can't
+    monopolise the Android main thread, which is also what delivers touch input.
+  - Reminders are armed from the due date forward so they fire even if the app is
+    never reopened. Paid and archived bills arm nothing.
 - **Reminder ladder** per unpaid instance, all at 9:00 local: −2d, −1d, due day,
-  then daily overdue nagging until paid — armed proactively as **seven one-shot
-  pings** (due+1 on slot 0, due+2…due+7 on slots 4–9, `overdueLadder()`); any
-  launch while the bill is overdue replaces the ladder with an **open-ended
-  daily repeating reminder** (the leftover ladder pings simply aren't in the
-  plan, so `reconcile` retires them and they can't double up).
+  then **three one-shot overdue pings** (due+1 on slot 0, due+2/+3 on slots 4–5,
+  `overdueLadder()`). Six notifications per bill, and that count is the budget
+  that keeps a blind re-arm affordable. The ladder only has to bridge the gap
+  until the app is next opened: any launch while the bill is overdue replaces it
+  with an **open-ended daily repeating reminder** that nags without limit, and
+  puts the superseded slots in the plan's `clear` list so they can't double up.
   **Plugin gotcha, learned the hard way**: `matchDateTimeComponents`
   snaps a repeating schedule to the *next* component match on both platforms —
   a future start date is silently ignored — so never arm a repeating
@@ -268,22 +271,23 @@ All logic in `core/utils/notification_service.dart` (singleton,
   importance override on an existing one. Snooze payloads carry an `overdue` flag
   so a snoozed overdue reminder is rescheduled on the right channel.
 - **Snooze**: notification actions carry a JSON payload (`notifId`, `title`, `body`,
-  `langCode`, `overdue`, `repeating`, `at`) that must be self-contained — the
+  `langCode`, `overdue`, `repeating`) that must be self-contained — the
   background isolate handler (`@pragma('vm:entry-point')`) re-initializes timezone +
   plugin from scratch and can touch nothing from the app's state. Cold-start snoozes
   are recovered via `getNotificationAppLaunchDetails`. Snoozing reschedules on the
   *same* ID, so the payload's `repeating` flag decides one-shot vs. daily repeat —
   the open-ended overdue repeat is the only reminder left after the ladder takeover,
-  and snoozing it as a one-shot would silently end the nagging. Both snooze handlers
-  add a `snoozed` marker, which is what makes the payload differ from the planned
-  one so the next pass snaps the reminder back to its canonical 9:00.
+  and snoozing it as a one-shot would silently end the nagging. A snooze survives
+  only until the next launch: the blind re-arm re-issues the reminder at its
+  canonical 9:00.
 - **Anything that retires a bill or instance must cancel its notifications**:
   mark-paid cancels the instance's IDs; deleting a bill cancels all its instances'
   IDs via `cancelForInstances` (grab them *before* the delete removes the rows);
   archiving does the same. Undoing a payment on a past-due bill re-arms the daily
-  overdue reminder; unarchiving relies on the next scheduling pass. These are
-  belt-and-braces now — the reconciliation pass converges on the same state — but
-  they keep the effect immediate instead of waiting for the next launch.
+  overdue reminder; unarchiving relies on the next scheduling pass. The re-arm
+  pass is *not* a full backstop for these — it only clears slot 0 for a settled
+  bill (the one alarm that repeats without end), so a lost cancel on an upcoming
+  reminder still fires once. Keep the explicit cancels.
 - **Release-build trap**: `ic_stat_rounds` is only referenced by name from Dart, so
   R8 would strip it — the `<meta-data>` entry in `AndroidManifest.xml` exists solely
   to pin it. Any new drawable referenced only from Dart needs the same treatment.
@@ -370,12 +374,11 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
   now; keep it that way when adding new scheduling paths. `cancelAll()` needs no
   bookkeeping any more: the next pass sees an empty pending list and re-arms.
 - **iOS caps pending local notifications at 64**, keeping the soonest and
-  silently discarding the rest. The plan is up to 10 slots per unpaid instance
-  across three months, so roughly 7 bills reach the cap. The reconciler then
-  reads back fewer than it planned, treats the discarded ones as missing, and
-  re-arms them every launch without ever converging. Android has no such limit,
-  so this is latent, not live — but it needs a shorter horizon (or fewer slots
-  per instance) on iOS before that platform is taken seriously.
+  silently discarding the rest. The old design armed up to 10 slots per instance
+  across three months, so roughly 7 bills reach the cap. The rolling window makes
+  this far less likely — six slots per bill over 35 days puts a typical schedule
+  near 60–75 — but it isn't a guarantee, and iOS discards silently. Android has
+  no such limit, so this is latent, not live.
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
 - Amounts are `double` + hardcoded `$` formatting; fine for a personal app, know it
   before building anything money-math heavy.

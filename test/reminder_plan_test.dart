@@ -48,139 +48,147 @@ void main() {
         ),
       );
 
-  List<PlannedNotification> planFor(
+  ReminderPlan planFor(
     BillInstanceWithBill e,
     DateTime now, {
     String languageCode = 'en',
   }) =>
       plannedRemindersFor(e, now: now, languageCode: languageCode);
 
-  Map<String, dynamic> payloadOf(PlannedNotification n) =>
-      jsonDecode(n.payload) as Map<String, dynamic>;
-
   group('plannedRemindersFor', () {
-    test('arms the full ladder for a bill that is not yet due', () {
+    test('arms three upcoming reminders and a three-day ladder', () {
       final plan = planFor(entry(), DateTime(2026, 7, 1, 8));
 
-      // Slots 1–3 for the upcoming reminders, then 0 and 4–9 for the week of
-      // overdue pings.
+      // Slots 1–3 for the upcoming reminders, then 0, 4 and 5 for the ladder.
+      expect(plan.arm.map((n) => n.id).toList(), [12, 11, 13, 10, 14, 15]);
       expect(
-        plan.map((n) => n.id).toList(),
-        [12, 11, 13, 10, 14, 15, 16, 17, 18, 19],
-      );
-      expect(
-        plan.map((n) => n.fireAt).toList(),
+        plan.arm.map((n) => n.fireAt).toList(),
         [
           DateTime(2026, 7, 14, 9), // in 2 days
           DateTime(2026, 7, 15, 9), // tomorrow
           DateTime(2026, 7, 16, 9), // due today
-          for (var day = 17; day <= 23; day++) DateTime(2026, 7, day, 9),
+          DateTime(2026, 7, 17, 9), // overdue day 1
+          DateTime(2026, 7, 18, 9), // overdue day 2
+          DateTime(2026, 7, 19, 9), // overdue day 3
         ],
       );
-      expect(plan.every((n) => n.repeat == NotificationRepeat.none), isTrue);
-    });
-
-    test('plans nothing for a paid or archived bill', () {
-      final now = DateTime(2026, 7, 1, 8);
-
-      expect(planFor(entry(isPaid: true), now), isEmpty);
-      expect(planFor(entry(isArchived: true), now), isEmpty);
+      expect(plan.arm.every((n) => n.repeat == NotificationRepeat.none), isTrue);
+      expect(plan.clear, isEmpty);
     });
 
     test('omits reminders whose 9:00 slot has already passed', () {
-      // Mid-morning on the due date: the two upcoming reminders and today's
-      // 9:00 are gone, only the overdue ladder is left to arm.
+      // Mid-morning on the due date: the upcoming reminders and today's 9:00
+      // are gone, only the ladder is left to arm.
       final plan = planFor(entry(), DateTime(2026, 7, 16, 10));
 
-      expect(plan.map((n) => n.id).toList(), [10, 14, 15, 16, 17, 18, 19]);
-      expect(plan.first.fireAt, DateTime(2026, 7, 17, 9));
+      expect(plan.arm.map((n) => n.id).toList(), [10, 14, 15]);
+      expect(plan.arm.first.fireAt, DateTime(2026, 7, 17, 9));
     });
 
     test('replaces the ladder with one daily repeat once overdue', () {
       final plan = planFor(entry(), DateTime(2026, 7, 20, 12));
 
-      expect(plan, hasLength(1));
-      expect(plan.single.id, 10); // the frozen overdue slot
-      expect(plan.single.repeat, NotificationRepeat.daily);
-      expect(plan.single.overdue, isTrue);
+      expect(plan.arm, hasLength(1));
+      expect(plan.arm.single.id, 10); // the frozen overdue slot
+      expect(plan.arm.single.repeat, NotificationRepeat.daily);
+      expect(plan.arm.single.overdue, isTrue);
       // Today's 9:00 is gone, so the repeat starts tomorrow.
-      expect(plan.single.fireAt, DateTime(2026, 7, 21, 9));
+      expect(plan.arm.single.fireAt, DateTime(2026, 7, 21, 9));
+    });
+
+    test('clears the ladder it supersedes, including the retired slots', () {
+      final plan = planFor(entry(), DateTime(2026, 7, 20, 12));
+
+      // 14–15 are the live ladder; 16–19 are days 4–7 of the seven-day ladder
+      // an upgraded install may still have armed. Leaving either would double
+      // up with the repeat on slot 10.
+      expect(plan.clear, [14, 15, 16, 17, 18, 19]);
     });
 
     test('starts the overdue repeat today when 9:00 is still ahead', () {
       final plan = planFor(entry(), DateTime(2026, 7, 20, 7));
 
-      expect(plan.single.fireAt, DateTime(2026, 7, 20, 9));
+      expect(plan.arm.single.fireAt, DateTime(2026, 7, 20, 9));
     });
 
     test('keeps nagging for last month, dated so it reads unambiguously', () {
-      // A June bill still unpaid in July — the previous month stays inside the
-      // scheduling window.
+      // A June bill still unpaid in July.
       final plan = planFor(entry(month: 6), DateTime(2026, 7, 3, 12));
 
-      expect(plan, hasLength(1));
-      expect(plan.single.repeat, NotificationRepeat.daily);
-      expect(plan.single.body, contains('Jun'));
+      expect(plan.arm, hasLength(1));
+      expect(plan.arm.single.repeat, NotificationRepeat.daily);
+      expect(plan.arm.single.body, contains('Jun'));
     });
   });
 
-  group('payload fingerprint', () {
-    // reconcile() re-arms a notification exactly when the payload it would
-    // write differs from the armed one, so these properties are what keep a
-    // launch from re-issuing the whole schedule.
-    test('is identical across calls with the same inputs', () {
+  group('the rolling window', () {
+    // The horizon is what keeps the pass small enough to re-issue blindly on
+    // every launch, so its edges are load-bearing.
+    test('arms nothing for a bill beyond the horizon', () {
+      final now = DateTime(2026, 8, 12, 10);
+      final beyond = entry(year: 2026, month: 9, dueDay: 17);
+
+      expect(now.add(kReminderHorizon).isBefore(DateTime(2026, 9, 17)), isTrue);
+      expect(planFor(beyond, now).arm, isEmpty);
+      expect(planFor(beyond, now).clear, isEmpty);
+    });
+
+    test('arms a bill that has just come into the horizon', () {
+      final now = DateTime(2026, 8, 12, 10);
+      final inRange = entry(year: 2026, month: 9, dueDay: 16);
+
+      expect(planFor(inRange, now).arm, hasLength(6));
+    });
+
+    test('covers the next occurrence of every monthly bill', () {
+      // The point of 35 days: due days are capped at 28, so consecutive due
+      // dates are at most 31 days apart. Whatever the launch date, the next
+      // occurrence of every bill is inside the window.
+      for (var dueDay = 1; dueDay <= 28; dueDay++) {
+        for (var day = 1; day <= 28; day++) {
+          final now = DateTime(2026, 8, day, 12);
+          final thisMonth = planFor(entry(month: 8, dueDay: dueDay), now);
+          final nextMonth = planFor(entry(month: 9, dueDay: dueDay), now);
+
+          expect(
+            thisMonth.arm.isNotEmpty || nextMonth.arm.isNotEmpty,
+            isTrue,
+            reason: 'bill due day $dueDay went silent on Aug $day',
+          );
+        }
+      }
+    });
+  });
+
+  group('a bill that should have no reminders', () {
+    test('arms nothing when paid or archived', () {
       final now = DateTime(2026, 7, 1, 8);
-      final a = planFor(entry(), now).map((n) => n.payload).toList();
-      final b = planFor(entry(), now).map((n) => n.payload).toList();
 
-      expect(a, b);
+      expect(planFor(entry(isPaid: true), now).arm, isEmpty);
+      expect(planFor(entry(isArchived: true), now).arm, isEmpty);
     });
 
-    test('is stable across the day, so relaunching re-arms nothing', () {
-      final morning = planFor(entry(), DateTime(2026, 7, 1, 7));
-      final evening = planFor(entry(), DateTime(2026, 7, 1, 22));
+    test('clears the overdue repeat if the due date has passed', () {
+      // The backstop for a lost cancel: slot 0 is the only alarm that repeats
+      // without end, so it is the only one that could nag forever.
+      final now = DateTime(2026, 7, 20, 12);
 
-      expect(
-        morning.map((n) => n.payload).toList(),
-        evening.map((n) => n.payload).toList(),
-      );
+      expect(planFor(entry(isPaid: true), now).clear, [10]);
+      expect(planFor(entry(isArchived: true), now).clear, [10]);
     });
 
-    test('is stable day to day for the overdue repeat', () {
-      // The repeat only honours its time of day, so its fingerprint must not
-      // move with the calendar — otherwise every launch would re-arm it.
-      final monday = planFor(entry(), DateTime(2026, 7, 20, 12)).single;
-      final tuesday = planFor(entry(), DateTime(2026, 7, 21, 12)).single;
+    test('clears nothing when the due date is still ahead', () {
+      // No repeat can exist yet, and the one-shots expire on their own.
+      final plan = planFor(entry(isPaid: true), DateTime(2026, 7, 1, 8));
 
-      expect(monday.fireAt, isNot(tuesday.fireAt));
-      expect(monday.payload, tuesday.payload);
+      expect(plan.clear, isEmpty);
     });
+  });
 
-    test('changes when a reminder-relevant field changes', () {
-      final now = DateTime(2026, 7, 1, 8);
-      String fingerprint(BillInstanceWithBill e, {String lang = 'en'}) =>
-          planFor(e, now, languageCode: lang).map((n) => n.payload).join();
-
-      final base = fingerprint(entry());
-
-      expect(fingerprint(entry(name: 'Water')), isNot(base));
-      expect(fingerprint(entry(amount: 99.99)), isNot(base));
-      expect(fingerprint(entry(amount: null)), isNot(base));
-      expect(fingerprint(entry(dueDay: 20)), isNot(base));
-      expect(fingerprint(entry(), lang: 'es'), isNot(base));
-    });
-
-    test('differs from a snoozed reminder, so the next pass restores 9:00', () {
-      final planned = planFor(entry(), DateTime(2026, 7, 1, 8)).first;
-      // What the snooze handlers write back: the same map, marked.
-      final snoozed = jsonEncode({...payloadOf(planned), 'snoozed': true});
-
-      expect(snoozed, isNot(planned.payload));
-    });
-
+  group('payload', () {
     test('carries what the background snooze handler needs', () {
-      final overdue = planFor(entry(), DateTime(2026, 7, 20, 12)).single;
-      final payload = payloadOf(overdue);
+      final overdue = planFor(entry(), DateTime(2026, 7, 20, 12)).arm.single;
+      final payload = jsonDecode(overdue.payload) as Map<String, dynamic>;
 
       expect(payload['notifId'], 10);
       expect(payload['langCode'], 'en');
@@ -188,6 +196,14 @@ void main() {
       // Without this the handler would snooze the open-ended nag as a one-shot
       // and silently end it.
       expect(payload['repeating'], isTrue);
+    });
+
+    test('marks a one-shot as non-repeating', () {
+      final upcoming = planFor(entry(), DateTime(2026, 7, 1, 8)).arm.first;
+      final payload = jsonDecode(upcoming.payload) as Map<String, dynamic>;
+
+      expect(payload['repeating'], isFalse);
+      expect(payload['overdue'], isFalse);
     });
   });
 
@@ -211,40 +227,12 @@ void main() {
       );
     });
 
-    test('keeps a stable fingerprint as the target date moves', () {
-      final july = monthlyKickoffPlan(
-        now: DateTime(2026, 7, 3),
-        languageCode: 'en',
-      );
-      final august = monthlyKickoffPlan(
-        now: DateTime(2026, 8, 3),
-        languageCode: 'en',
-      );
-
-      expect(july.fireAt, isNot(august.fireAt));
-      expect(july.payload, august.payload);
-    });
-
-    test('changes with the language', () {
-      final en = monthlyKickoffPlan(
-        now: DateTime(2026, 7, 3),
-        languageCode: 'en',
-      );
-      final es = monthlyKickoffPlan(
-        now: DateTime(2026, 7, 3),
-        languageCode: 'es',
-      );
-
-      expect(es.payload, isNot(en.payload));
-    });
-
     test('stays clear of the instance ID space', () {
       final id = monthlyKickoffPlan(
         now: DateTime(2026, 7, 3),
         languageCode: 'en',
       ).id;
 
-      // Cancelling it would need instance 100000 to exist and be managed.
       expect(id ~/ 10, greaterThan(99999));
     });
   });

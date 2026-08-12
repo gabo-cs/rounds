@@ -68,7 +68,7 @@ Future<void> _setUpNotifications(
     // Respect the in-app toggle: scheduling here would silently re-arm
     // reminders the user turned off.
     if (!(prefs.getBool('notifications_enabled') ?? true)) return;
-    await reconcileNotifications(
+    await refreshReminderSchedule(
       billsRepo: container.read(billsRepositoryProvider),
       instancesRepo: container.read(billInstancesRepositoryProvider),
       languageCode: languageCode,
