@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -50,12 +51,14 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
     this._entry,
     this._languageCode,
     this._notificationsEnabled,
+    this._currency,
   ) : super(MarkPaidState(paidAt: DateTime.now()));
 
   final BillInstancesRepository _repo;
   final BillInstanceWithBill _entry;
   final String _languageCode;
   final bool _notificationsEnabled;
+  final Currency _currency;
   int get _instanceId => _entry.instance.id;
 
   void setDate(DateTime date) => state = state.copyWith(paidAt: date);
@@ -108,6 +111,7 @@ class MarkPaidNotifier extends StateNotifier<MarkPaidState> {
         await NotificationService.instance.scheduleOverdueReminderForInstance(
           _entry,
           languageCode: _languageCode,
+          currency: _currency,
         );
       }
       return true;
@@ -130,5 +134,6 @@ final markPaidProvider = StateNotifierProvider.family
     entry,
     settings.languageCode,
     settings.notificationsEnabled,
+    settings.currency,
   );
 });

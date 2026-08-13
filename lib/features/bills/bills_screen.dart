@@ -5,6 +5,7 @@ import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class BillsScreen extends ConsumerWidget {
@@ -212,7 +213,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _BillRow extends StatelessWidget {
+class _BillRow extends ConsumerWidget {
   const _BillRow({
     required this.bill,
     required this.onTap,
@@ -224,7 +225,7 @@ class _BillRow extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isArchived = bill.isArchived;
@@ -277,7 +278,9 @@ class _BillRow extends StatelessWidget {
               if (bill.amount != null) ...[
                 const SizedBox(width: 8),
                 Text(
-                  '\$${bill.amount!.toStringAsFixed(bill.amount! == bill.amount!.truncateToDouble() ? 0 : 2)}',
+                  ref
+                      .watch(settingsProvider.select((s) => s.currency))
+                      .format(bill.amount!),
                   style: theme.textTheme.titleSmall!.copyWith(
                     fontWeight: FontWeight.w700,
                     color: isArchived

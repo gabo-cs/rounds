@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/core/constants/app_constants.dart';
+import 'package:rounds/core/utils/currency_input_formatter.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class BillFormScreen extends ConsumerStatefulWidget {
@@ -32,6 +34,8 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   bool get _isEditing => widget.billId != null;
 
+  Currency get _currency => ref.read(settingsProvider).currency;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -44,7 +48,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   void _populateFromBill(Bill bill) {
     _nameController.text = bill.name;
     _amountController.text =
-        bill.amount != null ? bill.amount!.toStringAsFixed(2) : '';
+        bill.amount != null ? _currency.formatBare(bill.amount!) : '';
     _notesController.text = bill.notes ?? '';
     _dueDayOfMonth = bill.dueDayOfMonth;
 
@@ -65,10 +69,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     setState(() => _isSaving = true);
 
     final name = _nameController.text.trim();
-    final rawAmount = _amountController.text.trim();
-    final amount = rawAmount.isEmpty
-        ? null
-        : double.tryParse(rawAmount.replaceAll(',', '.'));
+    final amount = _currency.parse(_amountController.text);
     final notes =
         _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
     String? category;
@@ -190,6 +191,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   Widget _buildForm(Bill? existingBill) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     final isArchived = existingBill?.isArchived ?? false;
 
     return Scaffold(
@@ -257,17 +259,15 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
             TextFormField(
               controller: _amountController,
               decoration: InputDecoration(
-                prefixText: '\$ ',
+                prefixText: '${Currency.symbol} ',
                 hintText: l10n.amountHint,
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
-              ],
+              inputFormatters: [CurrencyInputFormatter(currency)],
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                final parsed = double.tryParse(v.replaceAll(',', '.'));
+                final parsed = currency.parse(v);
                 if (parsed == null || parsed <= 0) {
                   return l10n.amountInvalid;
                 }

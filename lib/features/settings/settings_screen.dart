@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/backup_service.dart';
 import 'package:rounds/core/utils/notification_service.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
@@ -91,6 +92,39 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
 
+          // CURRENCY
+          _SectionLabel(label: l10n.currencySection),
+          _SettingsCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                child: SegmentedButton<Currency>(
+                  segments: [
+                    ButtonSegment(
+                      value: Currency.cop,
+                      label: Text(l10n.currencyCop),
+                    ),
+                    ButtonSegment(
+                      value: Currency.usd,
+                      label: Text(l10n.currencyUsd),
+                    ),
+                  ],
+                  selected: {settings.currency},
+                  onSelectionChanged: (selected) {
+                    notifier.setCurrency(selected.first);
+                  },
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  expandedInsets: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+
           // NOTIFICATIONS
           _SectionLabel(label: l10n.notificationsSection),
           _SettingsCard(
@@ -126,6 +160,7 @@ class SettingsScreen extends ConsumerWidget {
                         instancesRepo:
                             ref.read(billInstancesRepositoryProvider),
                         languageCode: ref.read(settingsProvider).languageCode,
+                        currency: ref.read(settingsProvider).currency,
                       );
                     }
                   },
@@ -158,12 +193,11 @@ class SettingsScreen extends ConsumerWidget {
                   try {
                     await NotificationService.instance
                         .requestExactAlarmsPermission();
-                    final languageCode = ref
-                        .read(settingsProvider)
-                        .languageCode;
+                    final current = ref.read(settingsProvider);
                     await NotificationService.instance.scheduleTestNotification(
                       last,
-                      languageCode: languageCode,
+                      languageCode: current.languageCode,
+                      currency: current.currency,
                     );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -285,6 +319,7 @@ class SettingsScreen extends ConsumerWidget {
           billsRepo: ref.read(billsRepositoryProvider),
           instancesRepo: ref.read(billInstancesRepositoryProvider),
           languageCode: settings.languageCode,
+          currency: settings.currency,
         );
       }
     }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/extensions/date_extensions.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/data/repositories/bills_repository.dart';
 
@@ -109,6 +110,7 @@ Future<void> refreshReminderSchedule({
   required BillsRepository billsRepo,
   required BillInstancesRepository instancesRepo,
   required String languageCode,
+  required Currency currency,
   DateTime? now,
 }) async {
   final today = now ?? DateTime.now();
@@ -144,7 +146,12 @@ Future<void> refreshReminderSchedule({
   );
   await NotificationService.instance.applyReminderPlans([
     for (final entry in candidates)
-      plannedRemindersFor(entry, now: today, languageCode: languageCode),
+      plannedRemindersFor(
+        entry,
+        now: today,
+        languageCode: languageCode,
+        currency: currency,
+      ),
   ]);
 
   // Unpaid instances older than the previous month have outlived the nagging

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/utils/currency_input_formatter.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/mark_paid/providers/mark_paid_providers.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class MarkPaidSheet extends ConsumerStatefulWidget {
@@ -30,7 +32,9 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
       text: instance.referenceNote ?? '',
     );
     _amountController = TextEditingController(
-      text: initialAmount != null ? initialAmount.toStringAsFixed(2) : '',
+      text: initialAmount != null
+          ? ref.read(settingsProvider).currency.formatBare(initialAmount)
+          : '',
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -62,6 +66,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
 
     return Padding(
       padding: EdgeInsets.only(
@@ -143,18 +148,13 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 TextField(
                   controller: _amountController,
                   decoration: InputDecoration(
-                    prefixText: '\$ ',
+                    prefixText: '${Currency.symbol} ',
                     hintText: l10n.amountPaidHint,
                   ),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[\d.,]')),
-                  ],
-                  onChanged: (v) {
-                    final parsed = double.tryParse(v.replaceAll(',', '.'));
-                    notifier.setAmountPaid(parsed);
-                  },
+                  inputFormatters: [CurrencyInputFormatter(currency)],
+                  onChanged: (v) => notifier.setAmountPaid(currency.parse(v)),
                 ),
                 const SizedBox(height: 16),
 

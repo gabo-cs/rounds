@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 
 void main() {
@@ -52,8 +53,14 @@ void main() {
     BillInstanceWithBill e,
     DateTime now, {
     String languageCode = 'en',
+    Currency currency = Currency.cop,
   }) =>
-      plannedRemindersFor(e, now: now, languageCode: languageCode);
+      plannedRemindersFor(
+        e,
+        now: now,
+        languageCode: languageCode,
+        currency: currency,
+      );
 
   group('plannedRemindersFor', () {
     test('arms three upcoming reminders and a three-day ladder', () {

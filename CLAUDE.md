@@ -389,8 +389,14 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
   near 60–75 — but it isn't a guarantee, and iOS discards silently. Android has
   no such limit, so this is latent, not live.
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
-- Amounts are `double` + hardcoded `$` formatting; fine for a personal app, know it
-  before building anything money-math heavy.
+- Amounts are `double`. Fine for a personal app, but know it before building
+  anything money-math heavy. Display and input both go through `Currency`
+  (`data/models/currency.dart`): it owns the separators, the symbol and the
+  parsing, and `CurrencyInputFormatter` groups digits live as they are typed.
+  Grouping comes from the locale pattern but the symbol is prefixed by hand —
+  `es_CO` formats currency as `1.000.000 $`, which nobody writes. Decimals show
+  only when the amount has them. Anything that renders or reads an amount takes
+  the currency from `settingsProvider`; nothing formats money inline.
 - **Version lives in two places**: `version:` in `pubspec.yaml` and the hardcoded
   `appVersionLabel` in both l10n implementations. Bump them together, always.
 

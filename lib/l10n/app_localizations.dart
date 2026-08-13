@@ -177,6 +177,9 @@ abstract class AppLocalizations {
   String get languageSection;
   String get englishLanguage;
   String get spanishLanguage;
+  String get currencySection;
+  String get currencyCop;
+  String get currencyUsd;
   String get testNotificationTitle;
   String get testNotificationSubtitle;
   String get noBillsThisMonth;

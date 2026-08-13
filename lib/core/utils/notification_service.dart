@@ -14,6 +14,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
@@ -211,6 +212,7 @@ ReminderPlan plannedRemindersFor(
   BillInstanceWithBill entry, {
   required DateTime now,
   required String languageCode,
+  required Currency currency,
 }) {
   final l10n = _l10nFor(languageCode);
   final langCode = l10n.localeName;
@@ -242,7 +244,7 @@ ReminderPlan plannedRemindersFor(
   }
 
   final amountLabel = entry.bill.amount != null
-      ? '\$${entry.bill.amount!.toStringAsFixed(2)}'
+      ? currency.format(entry.bill.amount!)
       : l10n.notificationBillLabel;
 
   final plan = <PlannedNotification>[];
@@ -720,12 +722,14 @@ class NotificationService {
   Future<void> scheduleOverdueReminderForInstance(
     BillInstanceWithBill entry, {
     String languageCode = 'en',
+    required Currency currency,
   }) =>
       applyReminderPlans([
         plannedRemindersFor(
           entry,
           now: DateTime.now(),
           languageCode: languageCode,
+          currency: currency,
         ),
       ]);
 
@@ -733,13 +737,16 @@ class NotificationService {
     BillInstanceWithBill entry, {
     int secondsFromNow = 10,
     String languageCode = 'en',
+    required Currency currency,
   }) async {
     if (!await _ready()) return;
     final l10n = _l10nFor(languageCode);
     final langCode = l10n.localeName;
     final title = '${entry.bill.name} — ${l10n.notificationTomorrow}';
-    final body =
-        '${entry.bill.amount != null ? '\$${entry.bill.amount!.toStringAsFixed(2)}' : l10n.notificationBillLabel} — ${l10n.dueThe(entry.bill.dueDayOfMonth)}';
+    final amountLabel = entry.bill.amount != null
+        ? currency.format(entry.bill.amount!)
+        : l10n.notificationBillLabel;
+    final body = '$amountLabel — ${l10n.dueThe(entry.bill.dueDayOfMonth)}';
     final payload = jsonEncode({
       'notifId': _kTestNotificationId,
       'title': title,

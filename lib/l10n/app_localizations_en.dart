@@ -300,6 +300,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get englishLanguage => 'English';
   @override
   String get spanishLanguage => 'Spanish';
+
+  @override
+  String get currencySection => 'Currency';
+
+  @override
+  String get currencyCop => 'Colombian peso';
+
+  @override
+  String get currencyUsd => 'US dollar';
   @override
   String get testNotificationTitle => 'Send test notification';
   @override

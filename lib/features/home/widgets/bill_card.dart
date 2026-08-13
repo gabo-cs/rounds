@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -110,20 +112,21 @@ class _DueDateLabel extends StatelessWidget {
   }
 }
 
-class _AmountLabel extends StatelessWidget {
+class _AmountLabel extends ConsumerWidget {
   const _AmountLabel({required this.entry});
 
   final BillInstanceWithBill entry;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final displayAmount =
         entry.instance.amountPaid ?? entry.bill.amount;
     if (displayAmount == null) return const SizedBox.shrink();
 
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     final cs = Theme.of(context).colorScheme;
     return Text(
-      '\$${displayAmount.toStringAsFixed(displayAmount == displayAmount.truncateToDouble() ? 0 : 2)}',
+      currency.format(displayAmount),
       textAlign: TextAlign.right,
       style: Theme.of(context).textTheme.titleSmall!.copyWith(
             fontWeight: FontWeight.w700,

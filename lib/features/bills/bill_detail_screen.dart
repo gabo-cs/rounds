@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:rounds/core/extensions/currency_extensions.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/payment_method.dart';
+import 'package:rounds/data/models/currency.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/mark_paid/mark_paid_sheet.dart';
@@ -113,16 +114,17 @@ class BillDetailScreen extends ConsumerWidget {
   }
 }
 
-class _BillInfoCard extends StatelessWidget {
+class _BillInfoCard extends ConsumerWidget {
   const _BillInfoCard({required this.bill});
 
   final Bill bill;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -136,7 +138,7 @@ class _BillInfoCard extends StatelessWidget {
                 if (bill.amount != null)
                   Expanded(
                     child: Text(
-                      bill.amount!.asCurrency,
+                      currency.format(bill.amount!),
                       style: theme.textTheme.headlineMedium!.copyWith(
                         fontWeight: FontWeight.w700,
                         color: cs.primary,
@@ -206,17 +208,18 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _InstanceRow extends StatelessWidget {
+class _InstanceRow extends ConsumerWidget {
   const _InstanceRow({required this.entry, required this.onTap});
 
   final BillInstanceWithBill entry;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     final instance = entry.instance;
     final isPaid = instance.isPaid;
 
@@ -255,7 +258,7 @@ class _InstanceRow extends StatelessWidget {
                   if (isPaid) ...[
                     const SizedBox(height: 2),
                     Text(
-                      _buildPaidSubtitle(instance, l10n),
+                      _buildPaidSubtitle(instance, l10n, currency),
                       style: theme.textTheme.bodySmall!.copyWith(
                         color: cs.onSurface.withValues(alpha: 0.55),
                       ),
@@ -271,13 +274,17 @@ class _InstanceRow extends StatelessWidget {
     );
   }
 
-  String _buildPaidSubtitle(BillInstance instance, AppLocalizations l10n) {
+  String _buildPaidSubtitle(
+    BillInstance instance,
+    AppLocalizations l10n,
+    Currency currency,
+  ) {
     final parts = <String>[];
     if (instance.paidAt != null) {
       parts.add(l10n.formatShortDate(instance.paidAt!));
     }
     if (instance.amountPaid != null) {
-      parts.add('\$${instance.amountPaid!.toStringAsFixed(2)}');
+      parts.add(currency.format(instance.amountPaid!));
     }
     final method = PaymentMethod.fromString(instance.paymentMethod);
     if (method != null) {

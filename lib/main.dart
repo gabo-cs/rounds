@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/app.dart';
 import 'package:rounds/core/utils/notification_service.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,6 +58,12 @@ Future<void> _setUpNotifications(
   SharedPreferences prefs,
 ) async {
   final languageCode = prefs.getString('language_code') ?? 'en';
+  // Read straight from prefs rather than through the settings notifier: this
+  // runs outside the widget tree, and the stored name is the same source.
+  final currency = Currency.values.firstWhere(
+    (c) => c.name == prefs.getString('currency'),
+    orElse: () => Currency.cop,
+  );
 
   // A notification-setup failure must never take the app down with it —
   // notifications are non-essential to using it.
@@ -72,6 +79,7 @@ Future<void> _setUpNotifications(
       billsRepo: container.read(billsRepositoryProvider),
       instancesRepo: container.read(billInstancesRepositoryProvider),
       languageCode: languageCode,
+      currency: currency,
     );
   } catch (e, st) {
     debugPrint('Notification setup failed: $e\n$st');
