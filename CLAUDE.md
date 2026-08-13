@@ -242,6 +242,15 @@ All logic in `core/utils/notification_service.dart` (singleton,
     `rescheduleNotifications`, called from its boot receiver and nowhere else),
     and a force-stopped app doesn't even receive the boot broadcast. Android
     offers no honest way to ask whether an alarm survived.
+  - **During development this is constant, not exotic.** Android Studio's Stop
+    button — and re-running the app — issues `am force-stop`, so every debug
+    cycle wipes the alarms while leaving the mirror intact. It cost three days
+    of silent, missed reminders once (Aug 2026) before the cause was found on a
+    stock Pixel, where no OEM battery manager was ever involved.
+  - To inspect the *real* state, ask AlarmManager rather than the app:
+    `adb shell dumpsys alarm | grep -A2 "com.rounds.rounds}"`. The `origWhen=`
+    lines are the armed local times, and their per-day histogram should match
+    each unpaid bill's six slots (due −2, −1, 0, +1, +2, +3).
   - `ReminderPlan` is `(arm, clear)`. `clear` is always derived from the *plan*
     — the ladder slots the overdue repeat supersedes, or slot 0 as a backstop for
     a settled bill whose cancel was lost — never from what the platform reports.
