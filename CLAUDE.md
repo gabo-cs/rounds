@@ -365,10 +365,11 @@ abstract `AppLocalizations` (grouped with `// ──` section headers); `_en.dar
 
 Recurring UI idioms:
 - **The Round** (`core/widgets/round_ring.dart`) is the signature element: a
-  month drawn as a segmented ring, one segment per bill in due-day order,
-  colored by state (paid green / pending `neutralDot` / overdue error). Big in
-  the Home header (animated draw-in), mini in History rows, hollow in empty
-  states. `ringSegmentAngles` is pure and unit-tested — keep it that way.
+  month drawn as a circle, one unit per bill, with consecutive same-state
+  units merged into smooth proportional arcs (paid green / pending
+  `neutralDot` / overdue error — callers group colors by state). Big in the
+  Home header (animated draw-in), mini in History rows, hollow in empty
+  states. `ringArcs` is pure and unit-tested — keep it that way.
 - **Due date leads, amount follows.** Amounts are optional, so the due date is
   the primary right-column datum on unpaid cards; the amount appears under it
   in mono when the bill has one. Don't invert this.

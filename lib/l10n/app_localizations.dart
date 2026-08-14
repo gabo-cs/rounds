@@ -77,10 +77,6 @@ abstract class AppLocalizations {
   /// Summary headline next to the Round, e.g. "5 of 8 paid" / "5 de 8 pagadas".
   String paidOfTotal(int paid, int total);
 
-  /// Remaining total for the month; [amount] arrives pre-formatted, e.g.
-  /// "$ 250.000 to go" / "Faltan $ 250.000".
-  String amountToGo(String amount);
-
   /// Overdue tally in the summary line, e.g. "1 overdue" / "1 vencida".
   String overdueCount(int count);
 
@@ -191,8 +187,6 @@ abstract class AppLocalizations {
   String get englishLanguage;
   String get spanishLanguage;
   String get currencySection;
-  String get currencyCop;
-  String get currencyUsd;
   String get testNotificationTitle;
   String get testNotificationSubtitle;
   String get noBillsThisMonth;

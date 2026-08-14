@@ -109,25 +109,27 @@ class SettingsScreen extends ConsumerWidget {
                           horizontal: 16,
                           vertical: 14,
                         ),
-                        child: SegmentedButton<Currency>(
-                          segments: [
-                            ButtonSegment(
-                              value: Currency.cop,
-                              label: Text(l10n.currencyCop),
-                            ),
-                            ButtonSegment(
-                              value: Currency.usd,
-                              label: Text(l10n.currencyUsd),
-                            ),
+                        // ISO codes need no translation, and what the choice
+                        // actually changes is the symbol and the separators —
+                        // so that's what each option shows.
+                        child: DropdownButtonFormField<Currency>(
+                          initialValue: settings.currency,
+                          decoration: const InputDecoration(),
+                          items: [
+                            for (final currency in Currency.values)
+                              DropdownMenuItem(
+                                value: currency,
+                                child: Text(
+                                  '${currency.code} · '
+                                  '${currency.format(1500)}',
+                                ),
+                              ),
                           ],
-                          selected: {settings.currency},
-                          onSelectionChanged: (selected) {
-                            notifier.setCurrency(selected.first);
+                          onChanged: (currency) {
+                            if (currency != null) {
+                              notifier.setCurrency(currency);
+                            }
                           },
-                          style: const ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          expandedInsets: EdgeInsets.zero,
                         ),
                       ),
                     ],

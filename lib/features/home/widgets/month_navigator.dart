@@ -7,7 +7,6 @@ import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/round_ring.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 /// The Home anchor: display-size month name, navigation, and the Round —
@@ -27,9 +26,12 @@ class MonthNavigator extends ConsumerWidget {
     final isCurrentMonth =
         selected.year == now.year && selected.month == now.month;
 
-    // Spanish month names arrive lowercase; as a display headline the month
-    // deserves its capital.
-    final rawMonth = DateFormat.MMMM().format(selectedDt);
+    // Format in the app's locale, not Intl's default — the language setting
+    // can differ from the device. Spanish month names arrive lowercase; as a
+    // display headline the month deserves its capital.
+    final rawMonth = DateFormat.MMMM(
+      Localizations.localeOf(context).languageCode,
+    ).format(selectedDt);
     final monthLabel = rawMonth[0].toUpperCase() + rawMonth.substring(1);
 
     void select(DateTime dt) {
@@ -157,23 +159,15 @@ class _SummaryContent extends ConsumerWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final rounds = RoundsColors.of(context);
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // One ring segment per bill, in due-day order around the dial.
-    final ordered = [...instances]
-      ..sort((a, b) => a.bill.dueDayOfMonth.compareTo(b.bill.dueDayOfMonth));
-
     var paidCount = 0;
     var overdueCount = 0;
-    var unpaidTotal = 0.0;
-    final segmentColors = <Color>[];
-    for (final entry in ordered) {
+    for (final entry in instances) {
       if (entry.instance.isPaid) {
         paidCount++;
-        segmentColors.add(rounds.paid);
         continue;
       }
       final due = DateTime(
@@ -181,13 +175,17 @@ class _SummaryContent extends ConsumerWidget {
         entry.instance.month,
         entry.bill.dueDayOfMonth,
       );
-      final isOverdue = due.isBefore(today);
-      if (isOverdue) overdueCount++;
-      segmentColors.add(
-        isOverdue ? theme.colorScheme.error : rounds.neutralDot,
-      );
-      unpaidTotal += entry.bill.amount ?? 0;
+      if (due.isBefore(today)) overdueCount++;
     }
+    final pendingCount = instances.length - paidCount - overdueCount;
+
+    // One ring unit per bill, grouped by state so each state draws as one
+    // smooth arc: settled, then pending, then overdue.
+    final segmentColors = <Color>[
+      ...List.filled(paidCount, rounds.paid),
+      ...List.filled(pendingCount, rounds.neutralDot),
+      ...List.filled(overdueCount, theme.colorScheme.error),
+    ];
 
     final allPaid = paidCount == instances.length;
     final detailSpans = <InlineSpan>[
@@ -197,12 +195,9 @@ class _SummaryContent extends ConsumerWidget {
           style: TextStyle(color: rounds.paid, fontWeight: FontWeight.w500),
         )
       else ...[
-        if (unpaidTotal > 0)
-          TextSpan(text: l10n.amountToGo(currency.format(unpaidTotal)))
-        else
-          TextSpan(text: l10n.pendingCount(instances.length - paidCount)),
+        if (pendingCount > 0) TextSpan(text: l10n.pendingCount(pendingCount)),
         if (overdueCount > 0) ...[
-          const TextSpan(text: ' · '),
+          if (pendingCount > 0) const TextSpan(text: ' · '),
           TextSpan(
             text: l10n.overdueCount(overdueCount),
             style: TextStyle(
@@ -219,14 +214,17 @@ class _SummaryContent extends ConsumerWidget {
       child: Row(
         children: [
           RoundRing(
-            size: 60,
+            size: 68,
             strokeWidth: 5,
             animate: true,
             segmentColors: segmentColors,
             trackColor: theme.colorScheme.outlineVariant,
             child: Text(
               '$paidCount/${instances.length}',
-              style: AppTypography.money.copyWith(fontSize: 13),
+              style: AppTypography.money.copyWith(
+                fontSize: 12,
+                letterSpacing: 0,
+              ),
             ),
           ),
           const SizedBox(width: 16),

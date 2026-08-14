@@ -30,6 +30,20 @@ void main() {
       expect(Currency.cop.formatBare(1000000), '1.000.000');
       expect(Currency.usd.formatBare(1234.5), '1,234.50');
     });
+
+    test('each currency pairs its symbol with its separators', () {
+      expect(Currency.eur.format(1500000), '€1.500.000');
+      expect(Currency.mxn.format(1500000), r'$1,500,000');
+      expect(Currency.brl.format(1500000), r'R$1.500.000');
+      expect(Currency.ars.format(1500000), r'$1.500.000');
+      expect(Currency.clp.format(1500000), r'$1.500.000');
+      expect(Currency.pen.format(1500.5), 'S/1,500.50');
+    });
+
+    test('codes are the upper-cased enum names', () {
+      expect(Currency.cop.code, 'COP');
+      expect(Currency.brl.code, 'BRL');
+    });
   });
 
   group('parse', () {

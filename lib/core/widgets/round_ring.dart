@@ -3,36 +3,57 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// One arc of a segmented ring, in radians. Angles follow Canvas.drawArc
-/// conventions (0 at 3 o'clock, clockwise positive); the layout starts at
-/// 12 o'clock so the ring reads like a dial.
-typedef RingSegment = ({double start, double sweep});
+/// One contiguous arc of the Round, in radians. Angles follow
+/// Canvas.drawArc conventions (0 at 3 o'clock, clockwise positive); the
+/// layout starts at 12 o'clock so the ring reads like a dial.
+typedef RingArc<T> = ({T state, double start, double sweep});
 
-/// Angular layout for the Round: [count] equal arcs separated by small gaps,
-/// clockwise from 12 o'clock. Pure so the geometry is testable without a
-/// canvas.
-///
-/// The gap narrows as segments multiply (35% of a slot at most) so arcs never
-/// collapse into their separators on a busy month.
-List<RingSegment> ringSegmentAngles(int count, {double gapDegrees = 12}) {
-  if (count <= 0) return const [];
-  final slot = 360 / count;
-  final gap = math.min(gapDegrees, slot * 0.35);
-  final sweep = slot - gap;
-  const top = -90.0;
-  return [
-    for (var i = 0; i < count; i++)
-      (
-        start: _radians(top + gap / 2 + i * slot),
-        sweep: _radians(sweep),
-      ),
-  ];
+/// Angular layout for the Round. Each entry in [states] is one bill, but
+/// consecutive equal states merge into a single smooth arc — the ring shows
+/// runs of state, not a dotted bead per bill. Arc length stays proportional
+/// to how many bills a run contains. Pure so the geometry is testable
+/// without a canvas.
+List<RingArc<T>> ringArcs<T>(List<T> states, {double gapDegrees = 10}) {
+  if (states.isEmpty) return const [];
+
+  final runs = <({T state, int count})>[];
+  for (final state in states) {
+    if (runs.isNotEmpty && runs.last.state == state) {
+      runs.last = (state: state, count: runs.last.count + 1);
+    } else {
+      runs.add((state: state, count: 1));
+    }
+  }
+
+  // A single run closes into a full, unbroken circle.
+  if (runs.length == 1) {
+    return [
+      (state: runs.single.state, start: _radians(-90), sweep: _radians(360)),
+    ];
+  }
+
+  // The gap shrinks when single-bill runs get narrow, so no arc can ever
+  // collapse into its separators.
+  final unit = 360 / states.length;
+  final gap = math.min(gapDegrees, unit * 0.5);
+
+  final arcs = <RingArc<T>>[];
+  var cursor = -90 + gap / 2;
+  for (final run in runs) {
+    arcs.add((
+      state: run.state,
+      start: _radians(cursor),
+      sweep: _radians(run.count * unit - gap),
+    ));
+    cursor += run.count * unit;
+  }
+  return arcs;
 }
 
 double _radians(double degrees) => degrees * math.pi / 180;
 
-/// The Round — a month drawn as a circle, one segment per bill, ordered by
-/// due day and colored by state. The signature element of the app.
+/// The Round — a month drawn as a circle, one unit per bill, merged into
+/// smooth state arcs. The signature element of the app.
 class RoundRing extends StatelessWidget {
   const RoundRing({
     super.key,
@@ -44,13 +65,14 @@ class RoundRing extends StatelessWidget {
     this.child,
   });
 
-  /// Colors in due-day order. An empty list paints just the faint track.
+  /// One color per bill, grouped by state by the caller. An empty list
+  /// paints just the faint track.
   final List<Color> segmentColors;
   final Color trackColor;
   final double size;
   final double strokeWidth;
 
-  /// Sweep the segments in whenever the underlying data changes. Off by
+  /// Sweep the arcs in whenever the underlying data changes. Off by
   /// default so list-embedded mini rings stay still.
   final bool animate;
 
@@ -122,16 +144,9 @@ class _RoundRingPainter extends CustomPainter {
       return;
     }
 
-    final segments = ringSegmentAngles(segmentColors.length);
-    for (var i = 0; i < segments.length; i++) {
-      paint.color = segmentColors[i];
-      canvas.drawArc(
-        rect,
-        segments[i].start,
-        segments[i].sweep * progress,
-        false,
-        paint,
-      );
+    for (final arc in ringArcs(segmentColors)) {
+      paint.color = arc.state;
+      canvas.drawArc(rect, arc.start, arc.sweep * progress, false, paint);
     }
   }
 

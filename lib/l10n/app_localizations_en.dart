@@ -97,8 +97,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String paidOfTotal(int paid, int total) => '$paid of $total paid';
   @override
-  String amountToGo(String amount) => '$amount to go';
-  @override
   String overdueCount(int count) =>
       count == 1 ? '1 overdue' : '$count overdue';
 
@@ -313,11 +311,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get currencySection => 'Currency';
 
-  @override
-  String get currencyCop => 'Colombian peso';
 
-  @override
-  String get currencyUsd => 'US dollar';
   @override
   String get testNotificationTitle => 'Send test notification';
   @override

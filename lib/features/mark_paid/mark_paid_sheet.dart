@@ -4,7 +4,6 @@ import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/currency_input_formatter.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
-import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/mark_paid/providers/mark_paid_providers.dart';
@@ -166,7 +165,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: InputDecoration(
-                    prefixText: '${Currency.symbol} ',
+                    prefixText: '${currency.symbol} ',
                     hintText: l10n.amountPaidHint,
                   ),
                   keyboardType:

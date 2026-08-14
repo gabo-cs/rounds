@@ -253,17 +253,29 @@ abstract class AppTheme {
         color: isDark ? const Color(0xFF1E2D3F) : const Color(0xFFE5EDF4),
         space: 1,
       ),
+      // Dark chips are hollow outlines on the dark ground; on light surfaces
+      // an outline reads as noise, so chips take the same fill as the inputs
+      // and drop the border. Selection is carried by primaryContainer plus a
+      // heavier label in both modes.
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        side: BorderSide(color: scheme.outlineVariant),
-        backgroundColor: Colors.transparent,
+        side: isDark
+            ? BorderSide(color: scheme.outlineVariant)
+            : BorderSide.none,
+        backgroundColor: isDark ? Colors.transparent : fillColor,
         selectedColor: scheme.primaryContainer,
         showCheckmark: false,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
+          color: scheme.onSurface.withValues(alpha: 0.75),
+        ),
+        secondaryLabelStyle: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: scheme.onPrimaryContainer,
         ),
       ),
       snackBarTheme: SnackBarThemeData(

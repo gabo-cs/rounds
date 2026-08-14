@@ -312,7 +312,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                 fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
-                prefixText: '${Currency.symbol} ',
+                prefixText: '${currency.symbol} ',
                 hintText: l10n.amountHint,
               ),
               keyboardType:
