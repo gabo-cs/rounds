@@ -74,6 +74,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get previousMonthTooltip => 'Mes anterior';
   @override
   String get nextMonthTooltip => 'Mes siguiente';
+  @override
+  String roundNumber(int month) => 'ronda $month';
+  @override
+  String paidOfTotal(int paid, int total) => '$paid de $total pagadas';
+  @override
+  String amountToGo(String amount) => 'Faltan $amount';
+  @override
+  String overdueCount(int count) =>
+      count == 1 ? '1 vencida' : '$count vencidas';
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 

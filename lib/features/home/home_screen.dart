@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/home/widgets/bill_card.dart';
@@ -153,15 +155,19 @@ class _MonthPage extends ConsumerWidget {
           return !due.isBefore(today);
         }).toList();
 
+        final rounds = RoundsColors.of(context);
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
           children: [
             if (overdue.isNotEmpty) ...[
-              _SectionHeader(title: l10n.overdue, count: overdue.length),
-              const SizedBox(height: 14),
+              _SectionHeader(
+                title: l10n.overdue,
+                count: overdue.length,
+                dotColor: Theme.of(context).colorScheme.error,
+              ),
               ...overdue.map(
                 (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: BillCard(
                     entry: entry,
                     isOverdue: true,
@@ -172,12 +178,15 @@ class _MonthPage extends ConsumerWidget {
               ),
             ],
             if (pending.isNotEmpty) ...[
-              if (overdue.isNotEmpty) const SizedBox(height: 20),
-              _SectionHeader(title: l10n.pending, count: pending.length),
-              const SizedBox(height: 14),
+              if (overdue.isNotEmpty) const SizedBox(height: 12),
+              _SectionHeader(
+                title: l10n.pending,
+                count: pending.length,
+                dotColor: rounds.neutralDot,
+              ),
               ...pending.map(
                 (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: BillCard(
                     entry: entry,
                     onTap: () => _openMarkPaid(context, entry),
@@ -188,17 +197,17 @@ class _MonthPage extends ConsumerWidget {
             ],
             if (paid.isNotEmpty) ...[
               if (overdue.isNotEmpty || pending.isNotEmpty)
-                const SizedBox(height: 20),
-              _SectionHeader(title: l10n.paid, count: paid.length),
-              const SizedBox(height: 14),
+                const SizedBox(height: 12),
+              _SectionHeader(
+                title: l10n.paid,
+                count: paid.length,
+                dotColor: rounds.paid,
+              ),
               ...paid.map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: BillCard(
-                    entry: entry,
-                    onTap: () => _openMarkPaid(context, entry),
-                    onLongPress: () => context.push('/bills/${entry.bill.id}'),
-                  ),
+                (entry) => PaidBillRow(
+                  entry: entry,
+                  onTap: () => _openMarkPaid(context, entry),
+                  onLongPress: () => context.push('/bills/${entry.bill.id}'),
                 ),
               ),
             ],
@@ -222,33 +231,40 @@ class _MonthPage extends ConsumerWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.count});
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    required this.dotColor,
+  });
 
   final String title;
   final int count;
+  final Color dotColor;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
+    final rounds = RoundsColors.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
         children: [
-          Text(
-            title,
-            style: theme.textTheme.titleLarge!.copyWith(
-              fontWeight: FontWeight.bold,
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
             ),
           ),
+          const SizedBox(width: 8),
           Text(
-            l10n.itemsCount(count),
-            style: theme.textTheme.bodySmall!.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
+            title.toUpperCase(),
+            style: AppTypography.eyebrow.copyWith(color: rounds.textFaint),
+          ),
+          const Spacer(),
+          Text(
+            '$count',
+            style: AppTypography.monoMeta.copyWith(color: rounds.textFaint),
           ),
         ],
       ),

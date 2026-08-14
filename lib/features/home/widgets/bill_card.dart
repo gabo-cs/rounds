@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
-import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
+import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
-class BillCard extends StatelessWidget {
+/// Card for a bill that still needs attention. The due date leads the right
+/// column — amounts are optional, so the date is the one datum every bill
+/// has — with the amount as a secondary mono line when the bill carries one.
+class BillCard extends ConsumerWidget {
   const BillCard({
     super.key,
     required this.entry,
@@ -21,13 +25,21 @@ class BillCard extends StatelessWidget {
   final bool isOverdue;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isPaid = entry.instance.isPaid;
     final cs = theme.colorScheme;
+    final rounds = RoundsColors.of(context);
     final l10n = AppLocalizations.of(context);
+    final amount = entry.bill.amount;
 
     return Card(
+      color: isOverdue ? rounds.overdueSurface : null,
+      shape: isOverdue
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: rounds.overdueBorder),
+            )
+          : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
@@ -39,33 +51,25 @@ class BillCard extends StatelessWidget {
               BillIcon(
                 name: entry.bill.name,
                 category: entry.bill.category,
-                isPaid: isPaid,
-                size: 48,
+                size: 44,
               ),
               const SizedBox(width: 14),
-              // Left column: name + subtitle
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       entry.bill.name,
-                      style: theme.textTheme.titleMedium!.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isPaid
-                            ? cs.onSurface.withValues(alpha: 0.5)
-                            : null,
-                      ),
+                      style: theme.textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (isPaid) ...[
-                      const SizedBox(height: 3),
-                      _PaidSubtitle(entry: entry),
-                    ] else if (entry.bill.category != null) ...[
-                      const SizedBox(height: 3),
+                    if (entry.bill.category != null) ...[
+                      const SizedBox(height: 2),
                       Text(
                         l10n.translateCategory(entry.bill.category!),
                         style: theme.textTheme.bodySmall!.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.5),
+                          color: rounds.textFaint,
                         ),
                       ),
                     ],
@@ -73,14 +77,23 @@ class BillCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Right column: due date (pending) or amount (paid)
-              if (!isPaid)
-                _DueDateLabel(
-                  dueDay: entry.bill.dueDayOfMonth,
-                  isOverdue: isOverdue,
-                )
-              else
-                _AmountLabel(entry: entry),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    isOverdue
+                        ? l10n.overdueSince(entry.bill.dueDayOfMonth)
+                        : l10n.dueThe(entry.bill.dueDayOfMonth),
+                    style: theme.textTheme.titleSmall!.copyWith(
+                      color: isOverdue ? cs.error : null,
+                    ),
+                  ),
+                  if (amount != null) ...[
+                    const SizedBox(height: 2),
+                    _AmountText(amount: amount),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -89,82 +102,90 @@ class BillCard extends StatelessWidget {
   }
 }
 
-class _DueDateLabel extends StatelessWidget {
-  const _DueDateLabel({required this.dueDay, this.isOverdue = false});
+class _AmountText extends ConsumerWidget {
+  const _AmountText({required this.amount});
 
-  final int dueDay;
-  final bool isOverdue;
+  final double amount;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     return Text(
-      isOverdue ? l10n.overdueSince(dueDay) : l10n.dueThe(dueDay),
-      textAlign: TextAlign.right,
-      style: theme.textTheme.titleSmall!.copyWith(
-        fontWeight: FontWeight.w600,
-        color: isOverdue
-            ? theme.colorScheme.error
-            : theme.colorScheme.onSurface.withValues(alpha: 0.85),
+      currency.format(amount),
+      style: AppTypography.money.copyWith(
+        fontSize: 13,
+        color: RoundsColors.of(context).textSecondary,
       ),
     );
   }
 }
 
-class _AmountLabel extends ConsumerWidget {
-  const _AmountLabel({required this.entry});
+/// Ledger row for a settled bill — deliberately quieter and denser than the
+/// cards above it: done items get out of the way.
+class PaidBillRow extends ConsumerWidget {
+  const PaidBillRow({
+    super.key,
+    required this.entry,
+    required this.onTap,
+    required this.onLongPress,
+  });
 
   final BillInstanceWithBill entry;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final displayAmount =
-        entry.instance.amountPaid ?? entry.bill.amount;
-    if (displayAmount == null) return const SizedBox.shrink();
-
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
-    final cs = Theme.of(context).colorScheme;
-    return Text(
-      currency.format(displayAmount),
-      textAlign: TextAlign.right,
-      style: Theme.of(context).textTheme.titleSmall!.copyWith(
-            fontWeight: FontWeight.w700,
-            color: cs.onSurface.withValues(alpha: 0.4),
-          ),
-    );
-  }
-}
-
-class _PaidSubtitle extends StatelessWidget {
-  const _PaidSubtitle({required this.entry});
-
-  final BillInstanceWithBill entry;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final rounds = RoundsColors.of(context);
     final l10n = AppLocalizations.of(context);
-    final paidAt = entry.instance.paidAt;
-    final method = PaymentMethod.fromString(entry.instance.paymentMethod);
-    final parts = <String>[];
-    if (paidAt != null) parts.add(l10n.paidOnDate(paidAt));
-    if (method != null) parts.add(_methodLabel(method, l10n));
+    final currency = ref.watch(settingsProvider.select((s) => s.currency));
 
-    return Text(
-      parts.isEmpty ? l10n.paid : parts.join(' · '),
-      style: Theme.of(context).textTheme.bodySmall!.copyWith(
-            color: cs.onSurface.withValues(alpha: 0.5),
-          ),
+    final amount = entry.instance.amountPaid ?? entry.bill.amount;
+    final paidAt = entry.instance.paidAt;
+    // Amount when known; otherwise the payment date keeps the row honest.
+    final trailing = amount != null
+        ? currency.format(amount)
+        : paidAt != null
+            ? l10n.paidOnDate(paidAt)
+            : l10n.paid;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          children: [
+            BillIcon(
+              name: entry.bill.name,
+              category: entry.bill.category,
+              isPaid: true,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                entry.bill.name,
+                style: theme.textTheme.bodyMedium!.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: rounds.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              trailing,
+              style: AppTypography.monoMeta.copyWith(
+                color: rounds.textFaint,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-
-  String _methodLabel(PaymentMethod method, AppLocalizations l10n) =>
-      switch (method) {
-        PaymentMethod.cash => l10n.paymentCash,
-        PaymentMethod.bankTransfer => l10n.paymentBankTransfer,
-        PaymentMethod.card => l10n.paymentCard,
-        PaymentMethod.autoDebit => l10n.paymentAutoDebit,
-        PaymentMethod.other => l10n.paymentOther,
-      };
 }
