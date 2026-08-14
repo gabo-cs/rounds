@@ -93,10 +93,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/bills/new'),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
@@ -167,7 +163,8 @@ class _MonthPage extends ConsumerWidget {
 
         final rounds = RoundsColors.of(context);
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+          // No FAB on this screen, so the list only needs breathing room.
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
           children: [
             if (overdue.isNotEmpty) ...[
               _SectionHeader(
