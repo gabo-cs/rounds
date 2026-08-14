@@ -40,6 +40,7 @@ class RoundRing extends StatelessWidget {
     required this.segmentColors,
     required this.trackColor,
     this.strokeWidth = 5,
+    this.animate = false,
     this.child,
   });
 
@@ -49,11 +50,30 @@ class RoundRing extends StatelessWidget {
   final double size;
   final double strokeWidth;
 
+  /// Sweep the segments in whenever the underlying data changes. Off by
+  /// default so list-embedded mini rings stay still.
+  final bool animate;
+
   /// Centered content, typically the settled count.
   final Widget? child;
 
   @override
   Widget build(BuildContext context) {
+    if (!animate || MediaQuery.disableAnimationsOf(context)) {
+      return _paint(1);
+    }
+    return TweenAnimationBuilder<double>(
+      // Re-keying on the data restarts the sweep on real changes only —
+      // a new month, a bill marked paid — not on incidental rebuilds.
+      key: ValueKey(Object.hashAll(segmentColors)),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 550),
+      curve: Curves.easeOutCubic,
+      builder: (context, progress, _) => _paint(progress),
+    );
+  }
+
+  Widget _paint(double progress) {
     return SizedBox(
       width: size,
       height: size,
@@ -62,6 +82,7 @@ class RoundRing extends StatelessWidget {
           segmentColors: segmentColors,
           trackColor: trackColor,
           strokeWidth: strokeWidth,
+          progress: progress,
         ),
         child: child == null ? null : Center(child: child),
       ),
@@ -74,11 +95,15 @@ class _RoundRingPainter extends CustomPainter {
     required this.segmentColors,
     required this.trackColor,
     required this.strokeWidth,
+    this.progress = 1,
   });
 
   final List<Color> segmentColors;
   final Color trackColor;
   final double strokeWidth;
+
+  /// Fraction of each sweep drawn — the draw-in animation.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -100,7 +125,13 @@ class _RoundRingPainter extends CustomPainter {
     final segments = ringSegmentAngles(segmentColors.length);
     for (var i = 0; i < segments.length; i++) {
       paint.color = segmentColors[i];
-      canvas.drawArc(rect, segments[i].start, segments[i].sweep, false, paint);
+      canvas.drawArc(
+        rect,
+        segments[i].start,
+        segments[i].sweep * progress,
+        false,
+        paint,
+      );
     }
   }
 
@@ -108,5 +139,6 @@ class _RoundRingPainter extends CustomPainter {
   bool shouldRepaint(_RoundRingPainter oldDelegate) =>
       oldDelegate.strokeWidth != strokeWidth ||
       oldDelegate.trackColor != trackColor ||
+      oldDelegate.progress != progress ||
       !listEquals(oldDelegate.segmentColors, segmentColors);
 }

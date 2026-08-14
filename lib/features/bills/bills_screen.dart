@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
+import 'package:rounds/core/widgets/empty_state.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
@@ -58,7 +59,16 @@ class BillsScreen extends ConsumerWidget {
                       allBills.where((b) => b.isArchived).toList();
 
                   if (allBills.isEmpty) {
-                    return _EmptyState(onAdd: () => context.push('/bills/new'));
+                    return EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: l10n.noBillsYet,
+                      subtitle: l10n.addFirstBillBillsSubtitle,
+                      action: FilledButton.icon(
+                        onPressed: () => context.push('/bills/new'),
+                        icon: const Icon(Icons.add),
+                        label: Text(l10n.addFirstBill),
+                      ),
+                    );
                   }
 
                   return ListView(
@@ -217,45 +227,3 @@ class _BillRow extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 72,
-              color: theme.colorScheme.outlineVariant,
-            ),
-            const SizedBox(height: 16),
-            Text(l10n.noBillsYet, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Text(
-              l10n.addFirstBillBillsSubtitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium!.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addFirstBill),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
+import 'package:rounds/core/widgets/empty_state.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/home/widgets/bill_card.dart';
@@ -130,7 +131,16 @@ class _MonthPage extends ConsumerWidget {
       ),
       data: (instances) {
         if (instances.isEmpty) {
-          return _EmptyState(onAddBill: () => context.push('/bills/new'));
+          return EmptyState(
+            icon: Icons.receipt_long_outlined,
+            title: l10n.noBillsYet,
+            subtitle: l10n.addFirstBillHomeSubtitle,
+            action: FilledButton.icon(
+              onPressed: () => context.push('/bills/new'),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.addFirstBill),
+            ),
+          );
         }
 
         final now = DateTime.now();
@@ -272,45 +282,3 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onAddBill});
-
-  final VoidCallback onAddBill;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 72,
-              color: theme.colorScheme.outlineVariant,
-            ),
-            const SizedBox(height: 16),
-            Text(l10n.noBillsYet, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 14),
-            Text(
-              l10n.addFirstBillHomeSubtitle,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium!.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onAddBill,
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addFirstBill),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

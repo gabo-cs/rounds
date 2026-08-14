@@ -1,6 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/backup_service.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
@@ -370,9 +372,8 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 24, 4, 8),
       child: Text(
         label.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall!.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-          letterSpacing: 1.2,
+        style: AppTypography.eyebrow.copyWith(
+          color: RoundsColors.of(context).textFaint,
         ),
       ),
     );

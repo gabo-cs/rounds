@@ -221,6 +221,7 @@ class _SummaryContent extends ConsumerWidget {
           RoundRing(
             size: 60,
             strokeWidth: 5,
+            animate: true,
             segmentColors: segmentColors,
             trackColor: theme.colorScheme.outlineVariant,
             child: Text(

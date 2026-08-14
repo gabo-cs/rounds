@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/backup_service.dart';
+import 'package:rounds/core/widgets/empty_state.dart';
 import 'package:rounds/core/widgets/round_ring.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -190,29 +191,11 @@ class _EmptyHistory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.history_outlined,
-            size: 72,
-            color: theme.colorScheme.outlineVariant,
-          ),
-          const SizedBox(height: 16),
-          Text(l10n.noHistoryYet, style: theme.textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(
-            l10n.noHistorySubtitle,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium!.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
+    return EmptyState(
+      icon: Icons.history_outlined,
+      title: l10n.noHistoryYet,
+      subtitle: l10n.noHistorySubtitle,
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/core/constants/app_constants.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/currency_input_formatter.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
@@ -305,6 +307,10 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
             const SizedBox(height: 6),
             TextFormField(
               controller: _amountController,
+              style: AppTypography.money.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
               decoration: InputDecoration(
                 prefixText: '${Currency.symbol} ',
                 hintText: l10n.amountHint,
@@ -378,13 +384,10 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      label,
-      style: Theme.of(context).textTheme.labelLarge!.copyWith(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.7),
-          ),
+      label.toUpperCase(),
+      style: AppTypography.eyebrow.copyWith(
+        color: RoundsColors.of(context).textFaint,
+      ),
     );
   }
 }

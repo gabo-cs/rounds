@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/currency_input_formatter.dart';
+import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -93,15 +96,37 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 ),
                 const SizedBox(height: 16),
 
-                // Header row: bill name + close button
+                // Header row: bill identity + close button
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    BillIcon(
+                      name: bill.name,
+                      category: bill.category,
+                      isPaid: instance.isPaid,
+                      size: 42,
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        bill.name,
-                        style: theme.textTheme.headlineMedium!
-                            .copyWith(fontWeight: FontWeight.bold),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            bill.name,
+                            style: theme.textTheme.headlineSmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            instance.isPaid
+                                ? l10n.updatePaymentSubtitle
+                                : l10n.markAsPaidSubtitle,
+                            style: theme.textTheme.bodySmall!.copyWith(
+                              color: RoundsColors.of(context).textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -120,17 +145,6 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-
-                // Subtitle
-                Text(
-                  instance.isPaid
-                      ? l10n.updatePaymentSubtitle
-                      : l10n.markAsPaidSubtitle,
-                  style: theme.textTheme.bodyMedium!.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
                 const SizedBox(height: 24),
 
                 // Date paid
@@ -147,6 +161,10 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: _amountController,
+                  style: AppTypography.money.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                   decoration: InputDecoration(
                     prefixText: '${Currency.symbol} ',
                     hintText: l10n.amountPaidHint,
@@ -276,13 +294,9 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label.toUpperCase(),
-      style: Theme.of(context).textTheme.labelSmall!.copyWith(
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: 0.7),
-            letterSpacing: 1.0,
-          ),
+      style: AppTypography.eyebrow.copyWith(
+        color: RoundsColors.of(context).textFaint,
+      ),
     );
   }
 }
@@ -310,9 +324,9 @@ class _DatePickerField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF141F30)
-              : const Color(0xFFE4EDF6),
+          // Match the theme's filled inputs, so this fake field can't drift
+          // from the real ones around it.
+          color: Theme.of(context).inputDecorationTheme.fillColor,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(

@@ -255,7 +255,15 @@ abstract class AppTheme {
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        side: BorderSide(color: scheme.outlineVariant),
+        backgroundColor: Colors.transparent,
+        selectedColor: scheme.primaryContainer,
+        showCheckmark: false,
+        labelStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
