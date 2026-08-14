@@ -5,6 +5,7 @@ import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/backup_service.dart';
 import 'package:rounds/core/utils/notification_service.dart';
+import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
@@ -301,28 +302,16 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.importDataDialogTitle),
-        content: Text(l10n.importDataDialogContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: Text(l10n.importAndReplaceButton),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      icon: Icons.download_outlined,
+      destructive: true,
+      title: l10n.importDataDialogTitle,
+      message: l10n.importDataDialogContent,
+      confirmLabel: l10n.importAndReplaceButton,
     );
 
-    if (confirmed != true || !context.mounted) return;
+    if (confirmed != ConfirmDialogResult.confirmed || !context.mounted) return;
 
     final result = await FilePicker.pickFiles(
       type: FileType.custom,

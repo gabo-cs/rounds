@@ -249,6 +249,13 @@ abstract class AppTheme {
         elevation: 4,
         shape: const CircleBorder(),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark ? const Color(0xFF0F1828) : Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
       dividerTheme: DividerThemeData(
         color: isDark ? const Color(0xFF1E2D3F) : const Color(0xFFE5EDF4),
         space: 1,

@@ -380,8 +380,14 @@ Recurring UI idioms:
 - Every screen's async body: `async.when(loading: spinner, error: l10n.genericErrorMessage, data: ...)`,
   with `core/widgets/EmptyState` (ring motif) for empty data. Never show raw
   exceptions.
-- Destructive confirmations: `AlertDialog` with error-colored `FilledButton`.
-  Deleting a bill lives on the edit screen (with archive), not in list rows.
+- Confirmations go through `core/widgets/confirm_dialog.dart`
+  (`showConfirmDialog`): icon lockup, centered copy, stacked full-width pill
+  buttons (a row of text buttons doesn't survive Spanish label lengths).
+  `destructive: true` for irreversible intents (delete, import-replace);
+  reversible ones (archive, undo) stay on primary. The delete dialog offers
+  "Archive instead" as an alternative action — archiving from there skips the
+  second confirmation on purpose. Deleting a bill lives on the edit screen
+  (with archive), not in list rows.
 - List padding leaves ~100px bottom clearance for the FAB.
 
 Home month pager: `PageView.builder` mapped to months via a fixed 2000–2100 origin,

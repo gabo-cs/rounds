@@ -91,6 +91,10 @@ abstract class AppLocalizations {
   String get addFirstBillBillsSubtitle;
   String get deleteBillDialogTitle;
   String deleteBillDialogContent(String name);
+
+  /// Info panel in the delete dialog nudging toward the reversible option.
+  String get archiveInsteadHint;
+  String get archiveInsteadButton;
   String get deleteBillButton;
 
   // ── Bill form ─────────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/currency_input_formatter.dart';
 import 'package:rounds/core/utils/notification_service.dart';
+import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
@@ -127,74 +128,67 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   Future<void> _delete(Bill bill) async {
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteBillDialogTitle),
-        content: Text(l10n.deleteBillDialogContent(bill.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: Text(l10n.deleteBillButton),
-          ),
-        ],
-      ),
+    final result = await showConfirmDialog(
+      context,
+      icon: Icons.delete_outline,
+      destructive: true,
+      title: l10n.deleteBillDialogTitle,
+      message: l10n.deleteBillDialogContent(bill.name),
+      confirmLabel: l10n.deleteBillButton,
+      // Deleting wipes history; most of the time archiving is what people
+      // actually want, so the dialog explains it and offers it directly.
+      note: l10n.archiveInsteadHint,
+      noteIcon: Icons.archive_outlined,
+      alternativeLabel: l10n.archiveInsteadButton,
     );
+    if (!mounted) return;
 
-    if (confirmed == true && mounted) {
-      // Grab the instance IDs before the delete removes them — they're needed
-      // to cancel the scheduled reminders, which would otherwise keep firing
-      // (the overdue one daily, forever) for a bill that no longer exists.
-      final instanceIds = await ref
-          .read(billInstancesRepositoryProvider)
-          .getInstanceIdsForBill(bill.id);
-      await ref.read(billsRepositoryProvider).deleteBill(bill.id);
-      await NotificationService.instance.cancelForInstances(instanceIds);
-      // The edit screen may sit on top of the bill's detail screen, which
-      // has nothing left to show — return to the list instead of popping.
-      if (mounted) context.go('/bills-tab');
+    switch (result) {
+      case ConfirmDialogResult.confirmed:
+        // Grab the instance IDs before the delete removes them — they're
+        // needed to cancel the scheduled reminders, which would otherwise
+        // keep firing (the overdue one daily, forever) for a bill that no
+        // longer exists.
+        final instanceIds = await ref
+            .read(billInstancesRepositoryProvider)
+            .getInstanceIdsForBill(bill.id);
+        await ref.read(billsRepositoryProvider).deleteBill(bill.id);
+        await NotificationService.instance.cancelForInstances(instanceIds);
+        // The edit screen may sit on top of the bill's detail screen, which
+        // has nothing left to show — return to the list instead of popping.
+        if (mounted) context.go('/bills-tab');
+      case ConfirmDialogResult.alternative:
+        // The dialog already explained what archiving does; a second
+        // confirmation here would just be friction.
+        await _archiveBillAndClose(bill);
+      case ConfirmDialogResult.cancelled:
+        break;
     }
   }
 
   Future<void> _archive(Bill bill) async {
     final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.archiveBillDialogTitle),
-        content: Text(l10n.archiveBillDialogContent(bill.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: Text(l10n.archiveButton),
-          ),
-        ],
-      ),
+    final result = await showConfirmDialog(
+      context,
+      icon: Icons.archive_outlined,
+      title: l10n.archiveBillDialogTitle,
+      message: l10n.archiveBillDialogContent(bill.name),
+      confirmLabel: l10n.archiveButton,
     );
-    if (confirmed == true && mounted) {
-      await ref.read(billsRepositoryProvider).archiveBill(bill.id);
-      // A retired bill shouldn't keep nagging — cancel its scheduled
-      // reminders. (Unarchiving re-arms them on the next scheduling pass.)
-      final instanceIds = await ref
-          .read(billInstancesRepositoryProvider)
-          .getInstanceIdsForBill(bill.id);
-      await NotificationService.instance.cancelForInstances(instanceIds);
-      if (mounted) context.pop();
+    if (result == ConfirmDialogResult.confirmed && mounted) {
+      await _archiveBillAndClose(bill);
     }
+  }
+
+  Future<void> _archiveBillAndClose(Bill bill) async {
+    await ref.read(billsRepositoryProvider).archiveBill(bill.id);
+    // A retired bill shouldn't keep nagging — cancel its scheduled
+    // reminders. (Unarchiving re-arms them on the next scheduling pass.)
+    final instanceIds = await ref
+        .read(billInstancesRepositoryProvider)
+        .getInstanceIdsForBill(bill.id);
+    await NotificationService.instance.cancelForInstances(instanceIds);
+    if (mounted) context.pop();
   }
 
   @override

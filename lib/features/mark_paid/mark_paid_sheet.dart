@@ -4,6 +4,7 @@ import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/currency_input_formatter.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
+import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/mark_paid/providers/mark_paid_providers.dart';
@@ -263,24 +264,14 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
 
   Future<bool> _confirmUndo(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.undoPaymentDialogTitle),
-        content: Text(l10n.undoPaymentDialogContent),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.undo),
-          ),
-        ],
-      ),
+    final result = await showConfirmDialog(
+      context,
+      icon: Icons.undo_rounded,
+      title: l10n.undoPaymentDialogTitle,
+      message: l10n.undoPaymentDialogContent,
+      confirmLabel: l10n.undo,
     );
-    return result ?? false;
+    return result == ConfirmDialogResult.confirmed;
   }
 }
 

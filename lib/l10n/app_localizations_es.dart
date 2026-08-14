@@ -96,6 +96,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get deleteBillDialogTitle => '¿Eliminar factura?';
   @override
+  String get archiveInsteadHint =>
+      '¿Quieres conservar el historial? Archivar oculta esta factura de los '
+      'próximos meses pero mantiene todo lo ya registrado — y puedes '
+      'desarchivarla cuando quieras.';
+  @override
+  String get archiveInsteadButton => 'Mejor archivar';
+  @override
   String deleteBillDialogContent(String name) =>
       '¿Eliminar "$name" permanentemente?\n\n'
       'Esto también borrará todo el historial de pagos de esta factura. '

@@ -120,6 +120,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'This cannot be undone.';
   @override
   String get deleteBillButton => 'Delete';
+  @override
+  String get archiveInsteadHint =>
+      'Want to keep the history? Archiving hides this bill from new months '
+      'but keeps everything already recorded — and you can unarchive it '
+      'anytime.';
+  @override
+  String get archiveInsteadButton => 'Archive instead';
 
   // ── Bill form ─────────────────────────────────────────────────────────────────
 
