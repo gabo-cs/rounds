@@ -85,6 +85,11 @@ abstract class AppLocalizations {
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
   String get billsTitle;
+
+  /// Caption under the Bills title separating this screen's job (the
+  /// recurring set-up) from the Round tab's (each month's status) — the two
+  /// lists show the same names, so this heads off the confusion.
+  String get billsScreenHint;
   String get archivedLabel;
 
   /// Count of bills set up, shown under the Bills title, e.g. "12 bills".

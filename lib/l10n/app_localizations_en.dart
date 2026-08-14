@@ -105,6 +105,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get billsTitle => 'Bills';
   @override
+  String get billsScreenHint =>
+      'Your recurring bills and their settings — name, amount, due day. '
+      'Each month\'s status (paid, pending, overdue) is on the Round tab.';
+  @override
   String get archivedLabel => 'Archived';
   @override
   String billsCount(int count) => count == 1 ? '1 bill' : '$count bills';

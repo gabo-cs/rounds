@@ -87,6 +87,11 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get billsTitle => 'Facturas';
   @override
+  String get billsScreenHint =>
+      'Tus facturas recurrentes y su configuración: nombre, monto y día de '
+      'vencimiento. El estado de cada mes (pagada, pendiente, vencida) está '
+      'en la pestaña Ronda.';
+  @override
   String get archivedLabel => 'Archivadas';
   @override
   String billsCount(int count) => count == 1 ? '1 factura' : '$count facturas';

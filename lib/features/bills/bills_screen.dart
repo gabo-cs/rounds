@@ -35,6 +35,18 @@ class BillsScreen extends ConsumerWidget {
               title: l10n.billsTitle,
               subtitle: activeCount > 0 ? l10n.billsCount(activeCount) : null,
             ),
+            // This list and the Round tab show the same bill names, so say
+            // plainly which job this screen does.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: Text(
+                l10n.billsScreenHint,
+                style: theme.textTheme.bodySmall!.copyWith(
+                  color: RoundsColors.of(context).textFaint,
+                  height: 1.4,
+                ),
+              ),
+            ),
             Expanded(
               child: allBillsAsync.when(
                 loading: () =>
