@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/payment_method.dart';
-import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
@@ -51,12 +52,11 @@ class BillDetailScreen extends ConsumerWidget {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                   child: Text(
-                    l10n.paymentHistoryTitle,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                    l10n.paymentHistoryTitle.toUpperCase(),
+                    style: AppTypography.eyebrow.copyWith(
+                      color: RoundsColors.of(context).textFaint,
                     ),
                   ),
                 ),
@@ -81,7 +81,7 @@ class BillDetailScreen extends ConsumerWidget {
                     sliver: SliverList.separated(
                       itemCount: instances.length,
                       separatorBuilder: (context, index) =>
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 2),
                       itemBuilder: (context, i) {
                         final entry = instances[i];
                         return _InstanceRow(
@@ -139,8 +139,8 @@ class _BillInfoCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       currency.format(bill.amount!),
-                      style: theme.textTheme.headlineMedium!.copyWith(
-                        fontWeight: FontWeight.w700,
+                      style: AppTypography.money.copyWith(
+                        fontSize: 26,
                         color: cs.primary,
                       ),
                     ),
@@ -225,23 +225,19 @@ class _InstanceRow extends ConsumerWidget {
 
     final label = l10n.monthLabel(instance.year, instance.month);
 
+    final rounds = RoundsColors.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(12),
-          color: cs.surface,
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
         child: Row(
           children: [
             Icon(
               isPaid
                   ? Icons.check_circle_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color: isPaid ? cs.primary : cs.outlineVariant,
+              color: isPaid ? rounds.paid : cs.outlineVariant,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -252,39 +248,51 @@ class _InstanceRow extends ConsumerWidget {
                   Text(
                     label,
                     style: theme.textTheme.bodyLarge!.copyWith(
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      color: isPaid ? null : rounds.textSecondary,
                     ),
                   ),
-                  if (isPaid) ...[
+                  if (isPaid && _paidSubtitle(instance, l10n) != null) ...[
                     const SizedBox(height: 2),
                     Text(
-                      _buildPaidSubtitle(instance, l10n, currency),
+                      _paidSubtitle(instance, l10n)!,
                       style: theme.textTheme.bodySmall!.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.55),
+                        color: rounds.textFaint,
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-            _StatusChip(isPaid: isPaid),
+            const SizedBox(width: 12),
+            if (isPaid && instance.amountPaid != null)
+              Text(
+                currency.format(instance.amountPaid!),
+                style: AppTypography.money.copyWith(
+                  fontSize: 13,
+                  color: rounds.textSecondary,
+                ),
+              )
+            else if (!isPaid)
+              Text(
+                l10n.unpaid.toUpperCase(),
+                style: AppTypography.eyebrow.copyWith(
+                  fontSize: 10,
+                  color: rounds.textFaint,
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  String _buildPaidSubtitle(
-    BillInstance instance,
-    AppLocalizations l10n,
-    Currency currency,
-  ) {
+  // The amount now trails the row on its own, so the subtitle carries the
+  // remaining payment details only.
+  String? _paidSubtitle(BillInstance instance, AppLocalizations l10n) {
     final parts = <String>[];
     if (instance.paidAt != null) {
       parts.add(l10n.formatShortDate(instance.paidAt!));
-    }
-    if (instance.amountPaid != null) {
-      parts.add(currency.format(instance.amountPaid!));
     }
     final method = PaymentMethod.fromString(instance.paymentMethod);
     if (method != null) {
@@ -294,7 +302,7 @@ class _InstanceRow extends ConsumerWidget {
         instance.referenceNote!.isNotEmpty) {
       parts.add(instance.referenceNote!);
     }
-    return parts.join(' · ');
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
   String _methodLabel(PaymentMethod method, AppLocalizations l10n) =>
@@ -307,30 +315,3 @@ class _InstanceRow extends ConsumerWidget {
       };
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.isPaid});
-
-  final bool isPaid;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isPaid
-            ? cs.primaryContainer
-            : cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        isPaid ? l10n.paid : l10n.unpaid,
-        style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              color: isPaid ? cs.onPrimaryContainer : cs.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-      ),
-    );
-  }
-}

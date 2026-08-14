@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/backup_service.dart';
 import 'package:rounds/core/utils/notification_service.dart';
+import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
@@ -18,244 +19,264 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.settingsTitle)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          // APPEARANCE
-          _SectionLabel(label: l10n.appearanceSection),
-          _SettingsCard(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: SegmentedButton<ThemeMode>(
-                  segments: [
-                    ButtonSegment(
-                      value: ThemeMode.light,
-                      label: Text(l10n.lightTheme),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.system,
-                      label: Text(l10n.systemTheme),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.dark,
-                      label: Text(l10n.darkTheme),
-                    ),
-                  ],
-                  selected: {settings.themeMode},
-                  onSelectionChanged: (selected) {
-                    notifier.setThemeMode(selected.first);
-                  },
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  expandedInsets: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
-
-          // LANGUAGE
-          _SectionLabel(label: l10n.languageSection),
-          _SettingsCard(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: SegmentedButton<String>(
-                  segments: [
-                    ButtonSegment(
-                      value: 'en',
-                      label: Text(l10n.englishLanguage),
-                    ),
-                    ButtonSegment(
-                      value: 'es',
-                      label: Text(l10n.spanishLanguage),
-                    ),
-                  ],
-                  selected: {settings.languageCode},
-                  onSelectionChanged: (selected) {
-                    notifier.setLanguageCode(selected.first);
-                  },
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  expandedInsets: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
-
-          // CURRENCY
-          _SectionLabel(label: l10n.currencySection),
-          _SettingsCard(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: SegmentedButton<Currency>(
-                  segments: [
-                    ButtonSegment(
-                      value: Currency.cop,
-                      label: Text(l10n.currencyCop),
-                    ),
-                    ButtonSegment(
-                      value: Currency.usd,
-                      label: Text(l10n.currencyUsd),
-                    ),
-                  ],
-                  selected: {settings.currency},
-                  onSelectionChanged: (selected) {
-                    notifier.setCurrency(selected.first);
-                  },
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  expandedInsets: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
-
-          // NOTIFICATIONS
-          _SectionLabel(label: l10n.notificationsSection),
-          _SettingsCard(
-            children: [
-              _SettingsTile(
-                icon: Icons.notifications_outlined,
-                title: l10n.billRemindersTitle,
-                subtitle: l10n.billRemindersSubtitle,
-                trailing: Switch(
-                  value: settings.notificationsEnabled,
-                  onChanged: (enabled) async {
-                    if (enabled) {
-                      final granted = await NotificationService.instance
-                          .requestPermission();
-                      if (!granted && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l10n.notificationDenied)),
-                        );
-                        return;
-                      }
-                      await NotificationService.instance
-                          .requestExactAlarmsPermission();
-                    } else {
-                      await NotificationService.instance.cancelAll();
-                    }
-                    notifier.setNotificationsEnabled(enabled);
-                    if (enabled) {
-                      // Re-arm now — startup scheduling only runs on launch, so
-                      // without this the toggle wouldn't take effect until the
-                      // next app start.
-                      await refreshReminderSchedule(
-                        billsRepo: ref.read(billsRepositoryProvider),
-                        instancesRepo:
-                            ref.read(billInstancesRepositoryProvider),
-                        languageCode: ref.read(settingsProvider).languageCode,
-                        currency: ref.read(settingsProvider).currency,
-                      );
-                    }
-                  },
-                ),
-              ),
-              const Divider(height: 1, indent: 64, endIndent: 0),
-              _SettingsTile(
-                icon: Icons.bug_report_outlined,
-                title: l10n.testNotificationTitle,
-                subtitle: l10n.testNotificationSubtitle,
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () async {
-                  final selected = ref.read(selectedMonthProvider);
-                  final instances = ref
-                      .read(monthInstancesProvider(selected))
-                      .valueOrNull;
-                  final last = instances?.isNotEmpty == true
-                      ? instances!.reduce(
-                          (a, b) => a.instance.id > b.instance.id ? a : b,
-                        )
-                      : null;
-                  if (last == null) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l10n.noBillsThisMonth)),
-                      );
-                    }
-                    return;
-                  }
-                  try {
-                    await NotificationService.instance
-                        .requestExactAlarmsPermission();
-                    final current = ref.read(settingsProvider);
-                    await NotificationService.instance.scheduleTestNotification(
-                      last,
-                      languageCode: current.languageCode,
-                      currency: current.currency,
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            l10n.testNotificationScheduled(last.bill.name),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ScreenHeader(title: l10n.settingsTitle),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                children: [
+                  // APPEARANCE
+                  _SectionLabel(label: l10n.appearanceSection),
+                  _SettingsCard(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: SegmentedButton<ThemeMode>(
+                          segments: [
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              label: Text(l10n.lightTheme),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              label: Text(l10n.systemTheme),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              label: Text(l10n.darkTheme),
+                            ),
+                          ],
+                          selected: {settings.themeMode},
+                          onSelectionChanged: (selected) {
+                            notifier.setThemeMode(selected.first);
+                          },
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
                           ),
+                          expandedInsets: EdgeInsets.zero,
                         ),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l10n.testNotificationFailed('$e')),
+                      ),
+                    ],
+                  ),
+
+                  // LANGUAGE
+                  _SectionLabel(label: l10n.languageSection),
+                  _SettingsCard(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                      );
-                    }
-                  }
-                },
-              ),
-            ],
-          ),
+                        child: SegmentedButton<String>(
+                          segments: [
+                            ButtonSegment(
+                              value: 'en',
+                              label: Text(l10n.englishLanguage),
+                            ),
+                            ButtonSegment(
+                              value: 'es',
+                              label: Text(l10n.spanishLanguage),
+                            ),
+                          ],
+                          selected: {settings.languageCode},
+                          onSelectionChanged: (selected) {
+                            notifier.setLanguageCode(selected.first);
+                          },
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          expandedInsets: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
 
-          // DATA
-          _SectionLabel(label: l10n.dataSection),
-          _SettingsCard(
-            children: [
-              _SettingsTile(
-                icon: Icons.upload_outlined,
-                title: l10n.exportDataTitle,
-                subtitle: l10n.exportDataSubtitle,
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _export(context, ref),
-              ),
-              const Divider(height: 1, indent: 64, endIndent: 0),
-              _SettingsTile(
-                icon: Icons.download_outlined,
-                title: l10n.importDataTitle,
-                subtitle: l10n.importDataSubtitle,
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _import(context, ref),
-              ),
-            ],
-          ),
+                  // CURRENCY
+                  _SectionLabel(label: l10n.currencySection),
+                  _SettingsCard(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: SegmentedButton<Currency>(
+                          segments: [
+                            ButtonSegment(
+                              value: Currency.cop,
+                              label: Text(l10n.currencyCop),
+                            ),
+                            ButtonSegment(
+                              value: Currency.usd,
+                              label: Text(l10n.currencyUsd),
+                            ),
+                          ],
+                          selected: {settings.currency},
+                          onSelectionChanged: (selected) {
+                            notifier.setCurrency(selected.first);
+                          },
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          expandedInsets: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
 
-          // ABOUT
-          _SectionLabel(label: l10n.aboutSection),
-          _SettingsCard(
-            children: [
-              _SettingsTile(
-                icon: Icons.info_outline,
-                title: 'Rounds',
-                subtitle: l10n.appVersionLabel,
+                  // NOTIFICATIONS
+                  _SectionLabel(label: l10n.notificationsSection),
+                  _SettingsCard(
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.notifications_outlined,
+                        title: l10n.billRemindersTitle,
+                        subtitle: l10n.billRemindersSubtitle,
+                        trailing: Switch(
+                          value: settings.notificationsEnabled,
+                          onChanged: (enabled) async {
+                            if (enabled) {
+                              final granted = await NotificationService.instance
+                                  .requestPermission();
+                              if (!granted && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(l10n.notificationDenied),
+                                  ),
+                                );
+                                return;
+                              }
+                              await NotificationService.instance
+                                  .requestExactAlarmsPermission();
+                            } else {
+                              await NotificationService.instance.cancelAll();
+                            }
+                            notifier.setNotificationsEnabled(enabled);
+                            if (enabled) {
+                              // Re-arm now — startup scheduling only runs on launch, so
+                              // without this the toggle wouldn't take effect until the
+                              // next app start.
+                              await refreshReminderSchedule(
+                                billsRepo: ref.read(billsRepositoryProvider),
+                                instancesRepo: ref.read(
+                                  billInstancesRepositoryProvider,
+                                ),
+                                languageCode: ref
+                                    .read(settingsProvider)
+                                    .languageCode,
+                                currency: ref.read(settingsProvider).currency,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 64, endIndent: 0),
+                      _SettingsTile(
+                        icon: Icons.bug_report_outlined,
+                        title: l10n.testNotificationTitle,
+                        subtitle: l10n.testNotificationSubtitle,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () async {
+                          final selected = ref.read(selectedMonthProvider);
+                          final instances = ref
+                              .read(monthInstancesProvider(selected))
+                              .valueOrNull;
+                          final last = instances?.isNotEmpty == true
+                              ? instances!.reduce(
+                                  (a, b) =>
+                                      a.instance.id > b.instance.id ? a : b,
+                                )
+                              : null;
+                          if (last == null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(l10n.noBillsThisMonth)),
+                              );
+                            }
+                            return;
+                          }
+                          try {
+                            await NotificationService.instance
+                                .requestExactAlarmsPermission();
+                            final current = ref.read(settingsProvider);
+                            await NotificationService.instance
+                                .scheduleTestNotification(
+                                  last,
+                                  languageCode: current.languageCode,
+                                  currency: current.currency,
+                                );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    l10n.testNotificationScheduled(
+                                      last.bill.name,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    l10n.testNotificationFailed('$e'),
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+
+                  // DATA
+                  _SectionLabel(label: l10n.dataSection),
+                  _SettingsCard(
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.upload_outlined,
+                        title: l10n.exportDataTitle,
+                        subtitle: l10n.exportDataSubtitle,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _export(context, ref),
+                      ),
+                      const Divider(height: 1, indent: 64, endIndent: 0),
+                      _SettingsTile(
+                        icon: Icons.download_outlined,
+                        title: l10n.importDataTitle,
+                        subtitle: l10n.importDataSubtitle,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _import(context, ref),
+                      ),
+                    ],
+                  ),
+
+                  // ABOUT
+                  _SectionLabel(label: l10n.aboutSection),
+                  _SettingsCard(
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.info_outline,
+                        title: 'Rounds',
+                        subtitle: l10n.appVersionLabel,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -332,9 +353,9 @@ class SettingsScreen extends ConsumerWidget {
       ImportError.readFailed => l10n.importErrorReadFailed,
       ImportError.unknown => l10n.importErrorGeneric,
     };
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

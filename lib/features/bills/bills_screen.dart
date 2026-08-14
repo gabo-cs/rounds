@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:rounds/core/utils/notification_service.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
+import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
@@ -28,37 +30,9 @@ class BillsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.billsTitle,
-                    style: theme.textTheme.headlineMedium!
-                        .copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    height: 3,
-                    width: 28,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  if (activeCount > 0) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      l10n.billsCount(activeCount),
-                      style: theme.textTheme.bodyMedium!.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            ScreenHeader(
+              title: l10n.billsTitle,
+              subtitle: activeCount > 0 ? l10n.billsCount(activeCount) : null,
             ),
             Expanded(
               child: allBillsAsync.when(
@@ -88,36 +62,28 @@ class BillsScreen extends ConsumerWidget {
                   }
 
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
                     children: [
                       ...active.map(
                         (bill) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: _BillRow(
                             bill: bill,
                             onTap: () =>
                                 context.push('/bills/${bill.id}/edit'),
-                            onDelete: () =>
-                                _confirmDelete(context, ref, bill),
                           ),
                         ),
                       ),
                       if (archived.isNotEmpty) ...[
-                        if (active.isNotEmpty) const SizedBox(height: 14),
-                        _SectionHeader(
-                          label: l10n.archivedLabel,
-                          count: archived.length,
-                        ),
-                        const SizedBox(height: 14),
+                        if (active.isNotEmpty) const SizedBox(height: 12),
+                        _ArchivedHeader(count: archived.length),
                         ...archived.map(
                           (bill) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.only(bottom: 8),
                             child: _BillRow(
                               bill: bill,
                               onTap: () =>
                                   context.push('/bills/${bill.id}/edit'),
-                              onDelete: () =>
-                                  _confirmDelete(context, ref, bill),
                             ),
                           ),
                         ),
@@ -136,105 +102,58 @@ class BillsScreen extends ConsumerWidget {
       ),
     );
   }
-
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    Bill bill,
-  ) async {
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteBillDialogTitle),
-        content: Text(l10n.deleteBillDialogContent(bill.name)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: Text(l10n.deleteBillButton),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      // Grab the instance IDs before the delete removes them — they're needed
-      // to cancel the scheduled reminders, which would otherwise keep firing
-      // (the overdue one daily, forever) for a bill that no longer exists.
-      final instanceIds = await ref
-          .read(billInstancesRepositoryProvider)
-          .getInstanceIdsForBill(bill.id);
-      await ref.read(billsRepositoryProvider).deleteBill(bill.id);
-      await NotificationService.instance.cancelForInstances(instanceIds);
-    }
-  }
 }
 
 final _allBillsProvider = StreamProvider<List<Bill>>((ref) {
   return ref.watch(billsRepositoryProvider).watchAllBills();
 });
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label, required this.count});
+class _ArchivedHeader extends StatelessWidget {
+  const _ArchivedHeader({required this.count});
 
-  final String label;
   final int count;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final rounds = RoundsColors.of(context);
     final l10n = AppLocalizations.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.titleLarge!.copyWith(
-            fontWeight: FontWeight.bold,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+      child: Row(
+        children: [
+          Icon(Icons.archive_outlined, size: 13, color: rounds.textFaint),
+          const SizedBox(width: 8),
+          Text(
+            l10n.archivedLabel.toUpperCase(),
+            style: AppTypography.eyebrow.copyWith(color: rounds.textFaint),
           ),
-        ),
-        Text(
-          l10n.itemsCount(count),
-          style: theme.textTheme.bodySmall!.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          const Spacer(),
+          Text(
+            '$count',
+            style: AppTypography.monoMeta.copyWith(color: rounds.textFaint),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
 class _BillRow extends ConsumerWidget {
-  const _BillRow({
-    required this.bill,
-    required this.onTap,
-    required this.onDelete,
-  });
+  const _BillRow({required this.bill, required this.onTap});
 
   final Bill bill;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final rounds = RoundsColors.of(context);
     final isArchived = bill.isArchived;
     final l10n = AppLocalizations.of(context);
 
     final subtitle = [
       l10n.dueThe(bill.dueDayOfMonth),
       if (bill.category != null) l10n.translateCategory(bill.category!),
-      if (isArchived) l10n.archivedLabel,
     ].join(' · ');
 
     return Card(
@@ -242,13 +161,16 @@ class _BillRow extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              BillIcon(
-                name: bill.name,
-                category: bill.category,
-                size: 48,
+              Opacity(
+                opacity: isArchived ? 0.45 : 1,
+                child: BillIcon(
+                  name: bill.name,
+                  category: bill.category,
+                  size: 44,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -258,49 +180,35 @@ class _BillRow extends ConsumerWidget {
                     Text(
                       bill.name,
                       style: theme.textTheme.titleMedium!.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isArchived
-                            ? cs.onSurface.withValues(alpha: 0.5)
-                            : null,
+                        color: isArchived ? rounds.textFaint : null,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall!.copyWith(
-                        color: cs.onSurface
-                            .withValues(alpha: isArchived ? 0.4 : 0.6),
+                        color: rounds.textFaint,
                       ),
                     ),
                   ],
                 ),
               ),
               if (bill.amount != null) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   ref
                       .watch(settingsProvider.select((s) => s.currency))
                       .format(bill.amount!),
-                  style: theme.textTheme.titleSmall!.copyWith(
-                    fontWeight: FontWeight.w700,
+                  style: AppTypography.money.copyWith(
+                    fontSize: 13,
                     color: isArchived
-                        ? cs.primary.withValues(alpha: 0.4)
-                        : cs.primary,
+                        ? rounds.textFaint
+                        : rounds.textSecondary,
                   ),
                 ),
               ],
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: l10n.edit,
-                iconSize: 18,
-                onPressed: onTap,
-              ),
-              IconButton(
-                icon: Icon(Icons.delete_outline, color: cs.error),
-                tooltip: l10n.delete,
-                iconSize: 18,
-                onPressed: onDelete,
-              ),
             ],
           ),
         ),

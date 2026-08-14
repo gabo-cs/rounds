@@ -123,6 +123,44 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     }
   }
 
+  Future<void> _delete(Bill bill) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.deleteBillDialogTitle),
+        content: Text(l10n.deleteBillDialogContent(bill.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: Text(l10n.deleteBillButton),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      // Grab the instance IDs before the delete removes them — they're needed
+      // to cancel the scheduled reminders, which would otherwise keep firing
+      // (the overdue one daily, forever) for a bill that no longer exists.
+      final instanceIds = await ref
+          .read(billInstancesRepositoryProvider)
+          .getInstanceIdsForBill(bill.id);
+      await ref.read(billsRepositoryProvider).deleteBill(bill.id);
+      await NotificationService.instance.cancelForInstances(instanceIds);
+      // The edit screen may sit on top of the bill's detail screen, which
+      // has nothing left to show — return to the list instead of popping.
+      if (mounted) context.go('/bills-tab');
+    }
+  }
+
   Future<void> _archive(Bill bill) async {
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
@@ -198,7 +236,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? l10n.editBillTitle : l10n.newBillTitle),
         actions: [
-          if (_isEditing && existingBill != null)
+          if (_isEditing && existingBill != null) ...[
             IconButton(
               icon: Icon(
                 isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
@@ -210,6 +248,15 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                       .unarchiveBill(existingBill.id)
                   : _archive(existingBill),
             ),
+            IconButton(
+              icon: Icon(
+                Icons.delete_outline,
+                color: theme.colorScheme.error,
+              ),
+              tooltip: l10n.delete,
+              onPressed: () => _delete(existingBill),
+            ),
+          ],
         ],
       ),
       body: Form(

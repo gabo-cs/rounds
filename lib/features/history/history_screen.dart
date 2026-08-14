@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:rounds/core/theme/app_theme.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/backup_service.dart';
+import 'package:rounds/core/widgets/round_ring.dart';
+import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/history/providers/history_providers.dart';
 import 'package:rounds/features/home/providers/home_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
-import 'package:go_router/go_router.dart';
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
@@ -16,49 +20,61 @@ class HistoryScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.historyTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.upload_outlined),
-            tooltip: l10n.exportDataTooltip,
-            onPressed: () => _export(context, ref),
-          ),
-        ],
-      ),
-      body: monthsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Text(
-              l10n.genericErrorMessage,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withValues(
-                      alpha: 0.6,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ScreenHeader(
+              title: l10n.historyTitle,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.upload_outlined),
+                  tooltip: l10n.exportDataTooltip,
+                  onPressed: () => _export(context, ref),
+                ),
+              ],
+            ),
+            Expanded(
+              child: monthsAsync.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(
+                      l10n.genericErrorMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
                     ),
+                  ),
+                ),
+                data: (months) {
+                  if (months.isEmpty) {
+                    return const _EmptyHistory();
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                    itemCount: months.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
+                    itemBuilder: (context, i) {
+                      return _MonthRow(
+                        summary: months[i],
+                        onTap: () => _navigateToMonth(context, ref, months[i]),
+                      );
+                    },
+                  );
+                },
               ),
             ),
-          ),
+          ],
         ),
-        data: (months) {
-          if (months.isEmpty) {
-            return const _EmptyHistory();
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            itemCount: months.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, i) {
-              return _MonthRow(
-                summary: months[i],
-                onTap: () => _navigateToMonth(context, ref, months[i]),
-              );
-            },
-          );
-        },
       ),
     );
   }
@@ -100,68 +116,69 @@ class _MonthRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final rounds = RoundsColors.of(context);
     final l10n = AppLocalizations.of(context);
     final allPaid = summary.pendingCount == 0;
     final label = l10n.monthLabel(summary.year, summary.month);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.titleMedium!.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.billsPaidOf(summary.paidCount, summary.totalCount),
-                    style: theme.textTheme.bodySmall!.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
+    // Miniature Round for the month: paid segments first, then what's left.
+    // Unpaid in a month that's already over means missed, so it reads red;
+    // the current (or a future) month's unpaid is just pending.
+    final now = DateTime.now();
+    final isPast = DateTime(summary.year, summary.month)
+        .isBefore(DateTime(now.year, now.month));
+    final unpaidColor = isPast ? cs.error : rounds.neutralDot;
+    final segmentColors = [
+      for (var i = 0; i < summary.paidCount; i++) rounds.paid,
+      for (var i = 0; i < summary.pendingCount; i++) unpaidColor,
+    ];
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              RoundRing(
+                size: 38,
+                strokeWidth: 3.5,
+                segmentColors: segmentColors,
+                trackColor: cs.outlineVariant,
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (allPaid)
-                  Text(
-                    l10n.allPaid,
-                    style: theme.textTheme.labelSmall!.copyWith(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.titleMedium,
                     ),
-                  )
-                else
-                  Text(
-                    l10n.pendingCount(summary.pendingCount),
-                    style: theme.textTheme.labelSmall!.copyWith(
-                      color: cs.error,
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.billsPaidOf(summary.paidCount, summary.totalCount),
+                      style: AppTypography.monoMeta.copyWith(
+                        color: rounds.textFaint,
+                      ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.chevron_right,
-              color: cs.onSurface.withValues(alpha: 0.4),
-            ),
-          ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                (allPaid
+                        ? l10n.allPaid
+                        : l10n.pendingCount(summary.pendingCount))
+                    .toUpperCase(),
+                style: AppTypography.eyebrow.copyWith(
+                  fontSize: 10,
+                  color: allPaid ? rounds.paid : unpaidColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
