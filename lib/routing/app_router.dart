@@ -97,8 +97,10 @@ class _BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
+  // The first tab shows the month's round, so its icon is the ring motif;
+  // it has no outlined/filled pair — selection is carried by the indicator.
   static const _icons = [
-    (Icons.home_outlined, Icons.home),
+    (Icons.donut_large_rounded, Icons.donut_large_rounded),
     (Icons.receipt_long_outlined, Icons.receipt_long),
     (Icons.history_outlined, Icons.history),
     (Icons.settings_outlined, Icons.settings),
@@ -107,7 +109,12 @@ class _BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final labels = [l10n.navHome, l10n.navBills, l10n.navHistory, l10n.navSettings];
+    final labels = [
+      l10n.navRound,
+      l10n.navBills,
+      l10n.navHistory,
+      l10n.navSettings,
+    ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     final bg = isDark ? const Color(0xFF0A1322) : Colors.white;

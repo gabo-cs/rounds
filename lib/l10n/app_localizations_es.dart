@@ -9,7 +9,7 @@ class AppLocalizationsEs extends AppLocalizations {
   // ── Navigation ───────────────────────────────────────────────────────────────
 
   @override
-  String get navHome => 'INICIO';
+  String get navRound => 'RONDA';
   @override
   String get navBills => 'FACTURAS';
   @override

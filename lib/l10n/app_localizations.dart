@@ -25,7 +25,9 @@ abstract class AppLocalizations {
 
   // ── Navigation ───────────────────────────────────────────────────────────────
 
-  String get navHome;
+  /// The first tab is one month's round, not a "home" — named after the
+  /// app's own vocabulary.
+  String get navRound;
   String get navBills;
   String get navHistory;
   String get navSettings;
