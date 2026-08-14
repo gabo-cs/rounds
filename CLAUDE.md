@@ -123,7 +123,7 @@ lib/
     extensions/             # DateTime + currency formatting extensions
     theme/app_theme.dart    # the entire design system
     utils/                  # NotificationService, BackupService
-    widgets/                # cross-feature widgets (BillIcon)
+    widgets/                # cross-feature widgets (BillIcon, RoundRing, ScreenHeader, EmptyState)
   data/
     database/               # AppDatabase + tables/ (+ generated .g.dart)
     models/                 # non-DB models (PaymentMethod enum)
@@ -342,21 +342,46 @@ abstract `AppLocalizations` (grouped with `// ──` section headers); `_en.dar
 
 ## Theming & UI conventions
 
-`core/theme/app_theme.dart` is the whole design system: two fully hand-picked M3
-`ColorScheme`s (light + dark, blue/navy identity — **not** seed-generated; don't
-replace with `ColorScheme.fromSeed`). Component styling goes in `_buildTheme`
-(cards 16px radius, filled inputs without borders, pill FilledButtons 52px high,
-floating snackbars) — style at the theme level, not per-widget, unless truly local.
+`core/theme/` is the whole design system, built in the 2026-08 redesign:
+- `app_theme.dart` — two fully hand-picked M3 `ColorScheme`s (light + dark,
+  blue/navy identity — **not** seed-generated; don't replace with
+  `ColorScheme.fromSeed`), the `textTheme`, and component styling in
+  `_buildTheme` (cards 16px radius, filled inputs without borders, pill
+  FilledButtons 52px high, bordered chips, floating snackbars) — style at the
+  theme level, not per-widget, unless truly local.
+- **Type**: Manrope (bundled asset, weights 400–800) for everything the UI
+  says; Spline Sans Mono via `AppTypography` (`money`, `monoMeta`, `eyebrow`)
+  for everything numeric or label-like — amounts, dates, counts, section
+  eyebrows. Nothing sets a bare `fontFamily` string outside these.
+- `rounds_colors.dart` — `RoundsColors` ThemeExtension: the status tokens
+  (`paid`/`paidContainer` green, `overdueSurface`/`overdueBorder` tint,
+  `neutralDot`) and the two named de-emphasis steps (`textSecondary`,
+  `textFaint`). Use these instead of improvising `withValues(alpha: …)`.
+- `category_visuals.dart` — `CategoryVisual.resolve` maps name/category
+  keywords → **icon + hue together** (so they can't disagree), with whole-word
+  matching (padded spaces) to avoid substring traps ('credit card' vs ' car ');
+  tested in `test/category_visuals_test.dart`. The paid green and error red
+  are reserved for status and never appear as category hues.
 
 Recurring UI idioms:
-- De-emphasized text = `onSurface.withValues(alpha: 0.4–0.7)`, not grey constants.
-- Paid = green `0xFF27AE60` (only in `BillIcon`); overdue = `colorScheme.error`.
+- **The Round** (`core/widgets/round_ring.dart`) is the signature element: a
+  month drawn as a segmented ring, one segment per bill in due-day order,
+  colored by state (paid green / pending `neutralDot` / overdue error). Big in
+  the Home header (animated draw-in), mini in History rows, hollow in empty
+  states. `ringSegmentAngles` is pure and unit-tested — keep it that way.
+- **Due date leads, amount follows.** Amounts are optional, so the due date is
+  the primary right-column datum on unpaid cards; the amount appears under it
+  in mono when the bill has one. Don't invert this.
+- Paid bills render as compact `PaidBillRow` ledger rows, not full cards —
+  settled items get out of the way.
+- Every tab header is `core/widgets/ScreenHeader` (display title + mono meta
+  line + actions); Home composes the same lockup inside `MonthNavigator`.
 - Every screen's async body: `async.when(loading: spinner, error: l10n.genericErrorMessage, data: ...)`,
-  with a friendly `_EmptyState` for empty data. Never show raw exceptions.
+  with `core/widgets/EmptyState` (ring motif) for empty data. Never show raw
+  exceptions.
 - Destructive confirmations: `AlertDialog` with error-colored `FilledButton`.
+  Deleting a bill lives on the edit screen (with archive), not in list rows.
 - List padding leaves ~100px bottom clearance for the FAB.
-- `BillIcon` maps name/category keywords → icon with whole-word matching (padded
-  spaces) to avoid substring traps ('credit card' vs ' car '); check-circle when paid.
 
 Home month pager: `PageView.builder` mapped to months via a fixed 2000–2100 origin,
 `allowImplicitScrolling: true` pre-builds neighbours; `selectedMonthProvider` is the
