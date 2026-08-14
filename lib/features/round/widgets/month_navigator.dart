@@ -6,7 +6,7 @@ import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/round_ring.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
-import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 /// The Home anchor: display-size month name, navigation, and the Round —

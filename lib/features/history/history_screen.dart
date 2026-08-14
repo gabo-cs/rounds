@@ -9,7 +9,7 @@ import 'package:rounds/core/widgets/round_ring.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/history/providers/history_providers.dart';
-import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class HistoryScreen extends ConsumerWidget {

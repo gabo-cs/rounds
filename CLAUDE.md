@@ -38,7 +38,7 @@ truth — if this file and the code disagree, the code wins; update this file.
 - Priorities: repository logic against a real in-memory DB via
   `AppDatabase.forTesting(NativeDatabase.memory())`, and unit tests for tricky pure
   logic — date math (`date_extensions.dart`), notification-ID mapping, backup
-  serialization round-trips, month↔page-index mapping in `home_screen.dart`, and
+  serialization round-trips, month↔page-index mapping in `round_screen.dart`, and
   the reminder plan builders (`test/reminder_plan_test.dart`), which are pure by
   design precisely so the schedule can be tested without a platform.
 - **Inject time in new logic.** The riskiest bugs here are date-boundary ones
@@ -132,7 +132,7 @@ lib/
   l10n/                     # hand-rolled AppLocalizations (en, es)
 ```
 
-Feature folders: `home` (monthly pager — the main screen), `bills` (list/form/detail),
+Feature folders: `round` (the monthly pager — the first tab), `bills` (list/form/detail),
 `history`, `mark_paid` (bottom sheet), `settings`. A feature owns its screens, its
 `providers/`, and feature-local `widgets/`. Widgets used by only one screen are private
 `_Widget` classes at the bottom of that screen's file — that is the preferred pattern;
@@ -145,7 +145,7 @@ only promote to `widgets/` (feature) or `core/widgets/` (cross-feature) on actua
 solely for Drift: `dart run build_runner build` after touching tables.
 
 Patterns in use:
-- **Root wiring** currently lives in `features/home/providers/home_providers.dart`
+- **Root wiring** currently lives in `features/round/providers/round_providers.dart`
   (`appDatabaseProvider` → `billsRepositoryProvider` /
   `billInstancesRepositoryProvider`) — a historical accident, not a convention.
   **Cross-feature providers never go in a feature folder**: put new ones in
@@ -183,7 +183,7 @@ Patterns in use:
 **custom** bottom nav (`_BottomNavBar` — the indicator covers icon+label, which
 `NavigationBar` can't do; don't swap it back). Full-screen flows are top-level routes
 pushed over the shell: `/bills/new`, `/bills/:billId`, `/bills/:billId/edit`.
-Cross-tab navigation = set state, then `context.go('/')` (see history → home).
+Cross-tab navigation = set state, then `context.go('/')` (see history → round).
 Mark-paid is a `showModalBottomSheet`, not a route.
 
 ## Startup sequencing (`main.dart`) — do not reorder casually
@@ -224,7 +224,7 @@ All logic in `core/utils/notification_service.dart` (singleton,
   reminders outright. See the trap below.
   - `plannedRemindersFor()` and `monthlyKickoffPlan()` are **pure functions** —
     no platform calls, fully unit-tested. `refreshReminderSchedule`
-    (`home_providers.dart`) builds the plans, `applyReminderPlans` issues them.
+    (`round_providers.dart`) builds the plans, `applyReminderPlans` issues them.
   - **The window is a span of days, not a count of months**:
     `kReminderHorizon` = 35. Cost then tracks *how many bills fall due soon*, not
     bills × slots × months. 35 because due days are capped at 28, so consecutive

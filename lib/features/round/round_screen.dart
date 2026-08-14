@@ -5,9 +5,9 @@ import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/empty_state.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
-import 'package:rounds/features/home/providers/home_providers.dart';
-import 'package:rounds/features/home/widgets/bill_card.dart';
-import 'package:rounds/features/home/widgets/month_navigator.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
+import 'package:rounds/features/round/widgets/bill_card.dart';
+import 'package:rounds/features/round/widgets/month_navigator.dart';
 import 'package:rounds/features/mark_paid/mark_paid_sheet.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
@@ -22,14 +22,14 @@ int _pageForMonth(SelectedMonth m) =>
 SelectedMonth _monthForPage(int page) =>
     SelectedMonth(year: _originYear + page ~/ 12, month: page % 12 + 1);
 
-class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+class RoundScreen extends ConsumerStatefulWidget {
+  const RoundScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<RoundScreen> createState() => _RoundScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _RoundScreenState extends ConsumerState<RoundScreen> {
   late final PageController _controller;
 
   @override

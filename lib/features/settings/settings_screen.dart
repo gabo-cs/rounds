@@ -8,7 +8,7 @@ import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/models/currency.dart';
-import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 

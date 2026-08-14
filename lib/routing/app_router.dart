@@ -4,7 +4,7 @@ import 'package:rounds/features/bills/bill_detail_screen.dart';
 import 'package:rounds/features/bills/bill_form_screen.dart';
 import 'package:rounds/features/bills/bills_screen.dart';
 import 'package:rounds/features/history/history_screen.dart';
-import 'package:rounds/features/home/home_screen.dart';
+import 'package:rounds/features/round/round_screen.dart';
 import 'package:rounds/features/settings/settings_screen.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
@@ -18,7 +18,7 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, state) => const HomeScreen(),
+              builder: (context, state) => const RoundScreen(),
             ),
           ],
         ),

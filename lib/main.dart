@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/app.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/models/currency.dart';
-import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

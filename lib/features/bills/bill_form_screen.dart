@@ -10,7 +10,7 @@ import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
-import 'package:rounds/features/home/providers/home_providers.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
