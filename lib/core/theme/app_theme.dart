@@ -1,4 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:rounds/core/theme/rounds_colors.dart';
+
+/// Text styles that live outside the Material slots: everything numeric or
+/// label-like is set in the mono face, which is what gives amounts, dates
+/// and counts their ledger voice. Colors are applied at the call site.
+abstract class AppTypography {
+  static const String monoFamily = 'SplineSansMono';
+
+  /// Amounts. Mono digits are inherently tabular, so columns align for free.
+  static const TextStyle money = TextStyle(
+    fontFamily: monoFamily,
+    fontWeight: FontWeight.w600,
+    fontSize: 15,
+    letterSpacing: -0.2,
+  );
+
+  /// Small metadata set in mono: dates, counts, "round 8".
+  static const TextStyle monoMeta = TextStyle(
+    fontFamily: monoFamily,
+    fontWeight: FontWeight.w400,
+    fontSize: 12,
+  );
+
+  /// Uppercase section eyebrows (OVERDUE · PENDING · PAID).
+  static const TextStyle eyebrow = TextStyle(
+    fontFamily: monoFamily,
+    fontWeight: FontWeight.w500,
+    fontSize: 11,
+    letterSpacing: 1.3,
+  );
+}
 
 abstract class AppTheme {
   static ThemeData get light {
@@ -85,6 +116,36 @@ abstract class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
+      fontFamily: 'Manrope',
+      // Manrope's heavy weights carry the identity; display slots are for
+      // month names and screen titles, tightened so they read as lockups.
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.8,
+        ),
+        headlineMedium: TextStyle(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.6,
+        ),
+        headlineSmall: TextStyle(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+        ),
+        titleLarge: TextStyle(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+        ),
+        titleMedium: TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
+        ),
+        titleSmall: TextStyle(fontWeight: FontWeight.w700),
+        labelLarge: TextStyle(fontWeight: FontWeight.w600),
+      ),
+      extensions: [
+        isDark ? RoundsColors.dark : RoundsColors.light,
+      ],
       scaffoldBackgroundColor: scheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: false,
