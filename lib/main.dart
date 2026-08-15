@@ -30,7 +30,9 @@ const _kReminderPassStaleAfter = Duration(hours: 24);
 
 const _kLastReminderPassKey = 'last_reminder_pass_millis';
 
-// Held so the listener is rooted for the life of the process.
+// Held so the listener is rooted for the life of the process; assignment-only
+// use is the point, hence the ignore.
+// ignore: unused_element
 AppLifecycleListener? _lifecycleListener;
 bool _reminderPassRunning = false;
 
