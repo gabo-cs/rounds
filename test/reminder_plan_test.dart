@@ -63,15 +63,16 @@ void main() {
       );
 
   group('plannedRemindersFor', () {
-    test('arms three upcoming reminders and a three-day ladder', () {
+    test('arms two upcoming reminders and a three-day ladder', () {
       final plan = planFor(entry(), DateTime(2026, 7, 1, 8));
 
-      // Slots 1–3 for the upcoming reminders, then 0, 4 and 5 for the ladder.
-      expect(plan.arm.map((n) => n.id).toList(), [12, 11, 13, 10, 14, 15]);
+      // Slots 1 and 3 for the upcoming reminders, then 0, 4 and 5 for the
+      // ladder. Slot 2 held the retired due−2 reminder; it is cleared, not
+      // armed, so an install upgrading from that version can't fire it once.
+      expect(plan.arm.map((n) => n.id).toList(), [11, 13, 10, 14, 15]);
       expect(
         plan.arm.map((n) => n.fireAt).toList(),
         [
-          DateTime(2026, 7, 14, 9), // in 2 days
           DateTime(2026, 7, 15, 9), // tomorrow
           DateTime(2026, 7, 16, 9), // due today
           DateTime(2026, 7, 17, 9), // overdue day 1
@@ -80,7 +81,7 @@ void main() {
         ],
       );
       expect(plan.arm.every((n) => n.repeat == NotificationRepeat.none), isTrue);
-      expect(plan.clear, isEmpty);
+      expect(plan.clear, [12]);
     });
 
     test('omits reminders whose 9:00 slot has already passed', () {
@@ -106,10 +107,10 @@ void main() {
     test('clears the ladder it supersedes, including the retired slots', () {
       final plan = planFor(entry(), DateTime(2026, 7, 20, 12));
 
-      // 14–15 are the live ladder; 16–19 are days 4–7 of the seven-day ladder
-      // an upgraded install may still have armed. Leaving either would double
-      // up with the repeat on slot 10.
-      expect(plan.clear, [14, 15, 16, 17, 18, 19]);
+      // 14–15 are the live ladder; 12 is the retired due−2 slot and 16–19 are
+      // days 4–7 of the seven-day ladder an upgraded install may still have
+      // armed. Leaving any would double up with the repeat on slot 10.
+      expect(plan.clear, [14, 15, 12, 16, 17, 18, 19]);
     });
 
     test('starts the overdue repeat today when 9:00 is still ahead', () {
@@ -144,7 +145,7 @@ void main() {
       final now = DateTime(2026, 8, 12, 10);
       final inRange = entry(year: 2026, month: 9, dueDay: 16);
 
-      expect(planFor(inRange, now).arm, hasLength(6));
+      expect(planFor(inRange, now).arm, hasLength(5));
     });
 
     test('covers the next occurrence of every monthly bill', () {

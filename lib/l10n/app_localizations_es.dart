@@ -325,8 +325,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get notificationTomorrow => 'vence mañana';
   @override
-  String get notificationIn2Days => 'vence en 2 días';
-  @override
   String get notificationBillLabel => 'Factura';
   @override
   String get monthlyReminderTitle => 'Una nueva ronda de facturas';

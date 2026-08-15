@@ -210,13 +210,14 @@ so e.g. marking a bill paid two seconds after launch still cancels its reminders
 All logic in `core/utils/notification_service.dart` (singleton,
 `NotificationService.instance`). Key invariants:
 
-- **ID scheme**: `instanceId * 10 + offset`, offsets 0–3 (overdue=0, tomorrow=1,
-  in-2-days=2, due-today=3) plus 4–5 (overdue ladder, days 2–3 past due). Offset
+- **ID scheme**: `instanceId * 10 + offset`, offsets 0, 1, 3 (overdue=0,
+  tomorrow=1, due-today=3) plus 4–5 (overdue ladder, days 2–3 past due). Offset
   values are frozen for upgrade compatibility — re-scheduling must overwrite, not
-  duplicate. **6–9 are retired**: they held days 4–7 of the original seven-day
-  ladder. Nothing plans them, but upgraded installs still have them armed, so
-  every clearing path (`_kEveryOffset`, the overdue takeover) keeps cancelling
-  them until they expire. Reserved IDs: 999999 (test), 1000001 (monthly kickoff).
+  duplicate. **2 and 6–9 are retired**: 2 held the due−2 reminder (dropped as
+  one nag too many), 6–9 held days 4–7 of the original seven-day ladder.
+  Nothing plans them, but upgraded installs still have them armed, so every
+  clearing path (`_kEveryOffset`, the overdue takeover, the pre-due plan's
+  slot-2 clear) keeps cancelling them until they expire. Reserved IDs: 999999 (test), 1000001 (monthly kickoff).
   New notification kinds need IDs that can't collide with `instanceId * 10 + n`.
 - **Scheduling model — a small rolling window, re-armed blindly.** This is the
   load-bearing design decision. Do **not** "optimize" it back into a diff
@@ -250,7 +251,7 @@ All logic in `core/utils/notification_service.dart` (singleton,
   - To inspect the *real* state, ask AlarmManager rather than the app:
     `adb shell dumpsys alarm | grep -A2 "com.rounds.rounds}"`. The `origWhen=`
     lines are the armed local times, and their per-day histogram should match
-    each unpaid bill's six slots (due −2, −1, 0, +1, +2, +3).
+    each unpaid bill's five slots (due −1, 0, +1, +2, +3).
   - `ReminderPlan` is `(arm, clear)`. `clear` is always derived from the *plan*
     — the ladder slots the overdue repeat supersedes, or slot 0 as a backstop for
     a settled bill whose cancel was lost — never from what the platform reports.
@@ -260,9 +261,9 @@ All logic in `core/utils/notification_service.dart` (singleton,
     monopolise the Android main thread, which is also what delivers touch input.
   - Reminders are armed from the due date forward so they fire even if the app is
     never reopened. Paid and archived bills arm nothing.
-- **Reminder ladder** per unpaid instance, all at 9:00 local: −2d, −1d, due day,
+- **Reminder ladder** per unpaid instance, all at 9:00 local: −1d, due day,
   then **three one-shot overdue pings** (due+1 on slot 0, due+2/+3 on slots 4–5,
-  `overdueLadder()`). Six notifications per bill, and that count is the budget
+  `overdueLadder()`). Five notifications per bill, and that count is the budget
   that keeps a blind re-arm affordable. The ladder only has to bridge the gap
   until the app is next opened: any launch while the bill is overdue replaces it
   with an **open-ended daily repeating reminder** that nags without limit, and
@@ -417,8 +418,8 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
 - **iOS caps pending local notifications at 64**, keeping the soonest and
   silently discarding the rest. The old design armed up to 10 slots per instance
   across three months, so roughly 7 bills reach the cap. The rolling window makes
-  this far less likely — six slots per bill over 35 days puts a typical schedule
-  near 60–75 — but it isn't a guarantee, and iOS discards silently. Android has
+  this far less likely — five slots per bill over 35 days puts a typical schedule
+  near 50–65 — but it isn't a guarantee, and iOS discards silently. Android has
   no such limit, so this is latent, not live.
 - `analysis_options.yaml` is stock `flutter_lints` — intentional for now.
 - Amounts are `double`. Fine for a personal app, but know it before building

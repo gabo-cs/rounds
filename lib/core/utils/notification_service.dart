@@ -37,7 +37,6 @@ const _kActionSnooze180 = 'snooze_180';
 // scheduled overdue reminder is overwritten rather than duplicated on upgrade.
 const _kOffsetOverdue = 0;
 const _kOffsetTomorrow = 1;
-const _kOffsetIn2Days = 2;
 const _kOffsetDueToday = 3;
 
 // Slots for the proactive overdue ladder: one-shot pings on the 2nd and 3rd day
@@ -45,20 +44,21 @@ const _kOffsetDueToday = 3;
 // within the instanceId*10+offset scheme, so no collisions with other kinds.
 const _kOffsetsOverdueLadder = [4, 5];
 
-// Slots 6–9 carried days 4–7 of the original seven-day ladder. Nothing plans
-// them any more, but an install upgrading from that version still has them
-// armed — so every path that clears an instance keeps clearing them until they
-// expire on their own.
-const _kOffsetsRetiredLadder = [6, 7, 8, 9];
+// Retired slots. Nothing plans them any more, but an install upgrading from a
+// version that did still has them armed — so every path that clears an
+// instance keeps clearing them until they expire on their own. Slot 2 held
+// the due−2 reminder (one nag two days ahead was judged one too many); 6–9
+// carried days 4–7 of the original seven-day overdue ladder.
+const _kOffsetRetiredIn2Days = 2;
+const _kOffsetsRetired = [_kOffsetRetiredIn2Days, 6, 7, 8, 9];
 
 // Every slot an instance can occupy, for the paths that retire it wholesale.
 const _kEveryOffset = [
   _kOffsetOverdue,
   _kOffsetTomorrow,
-  _kOffsetIn2Days,
   _kOffsetDueToday,
   ..._kOffsetsOverdueLadder,
-  ..._kOffsetsRetiredLadder,
+  ..._kOffsetsRetired,
 ];
 
 /// How far ahead reminders are armed.
@@ -276,12 +276,10 @@ ReminderPlan plannedRemindersFor(
   // (the ID slot stays fixed for upgrade compatibility, the days-before drives
   // the date).
   const upcoming = <({int idOffset, int daysBefore})>[
-    (idOffset: _kOffsetIn2Days, daysBefore: 2),
     (idOffset: _kOffsetTomorrow, daysBefore: 1),
     (idOffset: _kOffsetDueToday, daysBefore: 0),
   ];
   final labels = [
-    l10n.notificationIn2Days,
     l10n.notificationTomorrow,
     l10n.notificationDueToday,
   ];
@@ -320,10 +318,7 @@ ReminderPlan plannedRemindersFor(
       ),
     );
     clear.addAll([
-      for (final offset in [
-        ..._kOffsetsOverdueLadder,
-        ..._kOffsetsRetiredLadder,
-      ])
+      for (final offset in [..._kOffsetsOverdueLadder, ..._kOffsetsRetired])
         _notificationId(entry.instance.id, offset),
     ]);
   } else {
@@ -339,6 +334,10 @@ ReminderPlan plannedRemindersFor(
         overdue: true,
       );
     }
+    // An upgraded install may still have the retired due−2 ping armed for
+    // this not-yet-due bill; nothing overwrites that slot any more, so it
+    // would fire once unless cleared here.
+    clear.add(_notificationId(entry.instance.id, _kOffsetRetiredIn2Days));
   }
 
   return (arm: plan, clear: clear);

@@ -208,7 +208,6 @@ abstract class AppLocalizations {
 
   String get notificationDueToday;
   String get notificationTomorrow;
-  String get notificationIn2Days;
   String get notificationBillLabel;
 
   /// General reminder fired on the 1st of every month.
