@@ -258,7 +258,12 @@ All logic in `core/utils/notification_service.dart` (singleton,
     button — and re-running the app — issues `am force-stop`, so every debug
     cycle wipes the alarms while leaving the mirror intact. It cost three days
     of silent, missed reminders once (Aug 2026) before the cause was found on a
-    stock Pixel, where no OEM battery manager was ever involved.
+    stock Pixel, where no OEM battery manager was ever involved. With the
+    hide-triggered pass this has a new dev-cycle wrinkle: right after a
+    Stop/Play the pass timestamp is fresh, so neither the stale-launch
+    fallback (24h) nor the hide debounce (15 min) re-arms — `dumpsys` shows an
+    *empty* schedule until the first backgrounding 15+ minutes after the last
+    completed pass. Expected, not a bug; uninstalling resets the timestamp.
   - To inspect the *real* state, ask AlarmManager rather than the app:
     `adb shell dumpsys alarm | grep -A2 "com.rounds.rounds}"`. The `origWhen=`
     lines are the armed local times, and their per-day histogram should match
