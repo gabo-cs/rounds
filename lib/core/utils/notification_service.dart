@@ -659,7 +659,7 @@ class NotificationService {
   /// reboot or an app update re-registers the alarms, and a force-stopped app
   /// doesn't even receive the boot broadcast.
   ///
-  /// So re-issuing *is* the repair, and it has to happen every launch. What
+  /// So re-issuing *is* the repair, and it has to happen every session. What
   /// makes that affordable is [kReminderHorizon] keeping the schedule small.
   Future<void> applyReminderPlans(Iterable<ReminderPlan> plans) async {
     if (!await _ready()) return;

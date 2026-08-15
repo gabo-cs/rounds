@@ -194,12 +194,22 @@ Every line ordering there is deliberate and commented:
 2. One shared `ProviderContainer` (via `UncontrolledProviderScope`) so startup
    scheduling and the UI use the same DB instance.
 3. `container.read(activeBillsProvider)` warms the drift isolate before first frame.
-4. *All* notification work — plugin/timezone init, `handleLaunchSnooze()`, the
-   re-arm pass — happens after the first frame **+ 2s settle**, wrapped in
-   try/catch. Initializing the timezone DB is hundreds of ms of parsing on the UI
-   isolate, and every platform call behind it is serviced by the Android main
-   thread, which is also what delivers touch events. Keep any new startup work
-   behind that same deferral, and off the pre-`runApp` path entirely.
+4. Only the notification work that can't wait — plugin/timezone init and
+   `handleLaunchSnooze()` — happens after the first frame **+ 2s settle**,
+   wrapped in try/catch. Initializing the timezone DB is hundreds of ms of
+   parsing on the UI isolate, and every platform call behind it is serviced by
+   the Android main thread, which is also what delivers touch events. Keep any
+   new startup work behind that same deferral, and off the pre-`runApp` path
+   entirely.
+5. The **re-arm pass runs when the app is hidden**, not at launch: its 30–60
+   platform calls all land on that same Android main thread, and running them
+   seconds after launch made early scrolling stutter. Backgrounding always
+   passes through hidden, so every normally-ended session re-arms; an
+   `AppLifecycleListener.onHide` triggers it, debounced to once per 15 min. A
+   launch-time fallback runs the pass the old way only when no pass has
+   completed in 24h (crash-ended session, first launch) — `reminderPassIsDue`
+   is pure and tested. The completion timestamp is only written after a full
+   pass, so an interrupted one stays due.
 
 Because init is deferred, a user action can reach `NotificationService` before it
 is ready — every entry point therefore `await`s `_ready()` rather than no-op'ing,
@@ -233,7 +243,8 @@ All logic in `core/utils/notification_service.dart` (singleton,
     armed, with slack. `test/reminder_plan_test.dart` proves this exhaustively
     across every due-day/launch-day pair; don't lower it without re-reading that.
   - **The pass is blind and unconditional.** It re-issues everything, every
-    launch, without asking what is armed. Re-issuing *is* the repair.
+    session (on first hide, with the stale-launch fallback — see Startup
+    sequencing), without asking what is armed. Re-issuing *is* the repair.
   - **The trap — `pendingNotificationRequests()` lies.** It reads the plugin's
     own SharedPreferences mirror (`loadScheduledNotifications`), *not*
     AlarmManager. A force-stop or an OEM battery manager cancels the real alarms
@@ -411,7 +422,7 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
 
 ## Known debt & pitfalls (as of 2026-08)
 
-- **Notifications toggle**: every scheduling path (startup, language change,
+- **Notifications toggle**: every scheduling path (the re-arm pass, language change,
   undo-payment, import) must check `settings.notificationsEnabled` — they all do
   now; keep it that way when adding new scheduling paths. `cancelAll()` needs no
   bookkeeping any more: the next pass sees an empty pending list and re-arms.

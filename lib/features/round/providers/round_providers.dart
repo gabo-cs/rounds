@@ -93,7 +93,24 @@ final monthInstancesProvider = StreamProvider.autoDispose
       yield* instancesRepo.watchInstancesForMonth(month.year, month.month);
     });
 
-/// Re-arm the rolling window of reminders. Called on every launch.
+/// Whether enough time has passed since the last *completed* re-arm pass for
+/// another to be worth running. Pure so the clock edges are testable.
+bool reminderPassIsDue({
+  required int? lastCompletedMillis,
+  required DateTime now,
+  required Duration minInterval,
+}) {
+  if (lastCompletedMillis == null) return true;
+  final last = DateTime.fromMillisecondsSinceEpoch(lastCompletedMillis);
+  // A clock set backwards would otherwise defer the pass indefinitely.
+  if (last.isAfter(now)) return true;
+  return now.difference(last) >= minInterval;
+}
+
+/// Re-arm the rolling window of reminders. Runs when the app is backgrounded —
+/// the moment the Android main thread, which serves both these platform calls
+/// and touch input, has no scrolling to fight — with a stale-launch fallback
+/// for sessions that never get there (see main.dart).
 ///
 /// The pass is unconditional and blind — it re-issues everything due within
 /// [kReminderHorizon] rather than asking the platform what is already armed.

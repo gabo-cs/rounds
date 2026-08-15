@@ -6,6 +6,7 @@ import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
+import 'package:rounds/features/round/providers/round_providers.dart';
 
 void main() {
   // The overdue copy formats its due date; in the app the localization
@@ -212,6 +213,38 @@ void main() {
 
       expect(payload['repeating'], isFalse);
       expect(payload['overdue'], isFalse);
+    });
+  });
+
+  group('reminderPassIsDue', () {
+    final now = DateTime(2026, 8, 15, 12);
+    const interval = Duration(minutes: 15);
+
+    bool due(int? lastMillis) => reminderPassIsDue(
+          lastCompletedMillis: lastMillis,
+          now: now,
+          minInterval: interval,
+        );
+
+    test('always due when no pass has ever completed', () {
+      expect(due(null), isTrue);
+    });
+
+    test('not due again right after a completed pass', () {
+      final justRan = now.subtract(const Duration(minutes: 1));
+      expect(due(justRan.millisecondsSinceEpoch), isFalse);
+    });
+
+    test('due exactly once the interval has fully elapsed', () {
+      final atEdge = now.subtract(interval);
+      final justInside = now.subtract(interval - const Duration(seconds: 1));
+      expect(due(atEdge.millisecondsSinceEpoch), isTrue);
+      expect(due(justInside.millisecondsSinceEpoch), isFalse);
+    });
+
+    test('a clock set backwards cannot defer the pass forever', () {
+      final inTheFuture = now.add(const Duration(hours: 5));
+      expect(due(inTheFuture.millisecondsSinceEpoch), isTrue);
     });
   });
 
