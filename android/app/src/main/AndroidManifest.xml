@@ -4,6 +4,12 @@
     <!-- Required for exact alarms (notification scheduling) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- A reboot clears AlarmManager system-wide; the plugin's boot receiver
+         re-arms the schedule, but it never receives BOOT_COMPLETED without
+         this permission (the plugin's manifest does not bring it in). Without
+         it, every reminder stays dead after a restart until the app is next
+         opened. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Rounds"
         android:name="${applicationName}"
