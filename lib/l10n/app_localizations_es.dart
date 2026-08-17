@@ -278,7 +278,7 @@ class AppLocalizationsEs extends AppLocalizations {
   // ── FAQ screen ───────────────────────────────────────────────────────────────
 
   @override
-  String get faqTitle => 'Cómo funciona Rounds';
+  String get faqTitle => 'Preguntas frecuentes';
   @override
   String get faqSettingsSubtitle =>
       'Recordatorios, privacidad, batería, respaldos';
@@ -351,15 +351,23 @@ class AppLocalizationsEs extends AppLocalizations {
       'e impórtalo en un teléfono nuevo para continuar justo donde ibas, '
       'recordatorios incluidos.';
   @override
+  String get faqQHistory => '¿El historial se acumula para siempre?';
+  @override
+  String get faqAHistory =>
+      'Sí, a propósito — las rondas pasadas son tu registro de pagos, y la '
+      'pestaña Historial se construye con ellas. En almacenamiento es '
+      'insignificante: un año completo de facturas pesa unos pocos '
+      'kilobytes, así que incluso una década de historial sigue siendo '
+      'ligerísima. Eliminar una factura es lo único que borra su historial; '
+      'por eso archivar suele ser la mejor opción.';
+  @override
   String get faqQOpenSource => '¿Puedo pedir funciones o ver el código?';
   @override
   String get faqAOpenSource =>
       'Rounds es de código abierto. Ideas, reportes de errores y forks son '
-      'bienvenidos — el proyecto vive en GitHub:';
+      'bienvenidos — el proyecto vive en GitHub.';
   @override
-  String get faqCopyLinkButton => 'Copiar enlace';
-  @override
-  String get faqLinkCopied => 'Enlace copiado.';
+  String get faqOpenRepoButton => 'Abrir en GitHub';
   @override
   String get importDataDialogTitle => '¿Importar datos?';
   @override

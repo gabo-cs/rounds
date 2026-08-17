@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const _kRepoUrl = 'https://github.com/gabo-cs/rounds';
 
@@ -37,6 +37,7 @@ class FaqScreen extends StatelessWidget {
           _FaqCard(question: l10n.faqQBattery, answer: l10n.faqABattery),
           _SectionLabel(label: l10n.faqSectionData),
           _FaqCard(question: l10n.faqQBackup, answer: l10n.faqABackup),
+          _FaqCard(question: l10n.faqQHistory, answer: l10n.faqAHistory),
           _SectionLabel(label: l10n.faqSectionProject),
           _FaqCard(
             question: l10n.faqQOpenSource,
@@ -199,38 +200,31 @@ class _RepoLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
+    return FilledButton.tonalIcon(
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _kRepoUrl,
-              style: AppTypography.monoMeta.copyWith(
-                color: theme.colorScheme.primary,
+      icon: const Icon(Icons.open_in_new, size: 18),
+      label: Text(l10n.faqOpenRepoButton),
+      onPressed: () async {
+        final opened = await launchUrl(
+          Uri.parse(_kRepoUrl),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context).genericErrorMessage,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          TextButton(
-            onPressed: () async {
-              await Clipboard.setData(const ClipboardData(text: _kRepoUrl));
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(l10n.faqLinkCopied)),
-              );
-            },
-            child: Text(l10n.faqCopyLinkButton),
-          ),
-        ],
-      ),
+          );
+        }
+      },
     );
   }
 }

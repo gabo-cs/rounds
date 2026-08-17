@@ -214,10 +214,11 @@ abstract class AppLocalizations {
   String get faqABattery;
   String get faqQBackup;
   String get faqABackup;
+  String get faqQHistory;
+  String get faqAHistory;
   String get faqQOpenSource;
   String get faqAOpenSource;
-  String get faqCopyLinkButton;
-  String get faqLinkCopied;
+  String get faqOpenRepoButton;
   String get importDataDialogTitle;
   String get importDataDialogContent;
   String get importAndReplaceButton;

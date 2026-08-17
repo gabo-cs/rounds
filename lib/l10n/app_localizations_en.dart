@@ -296,7 +296,7 @@ class AppLocalizationsEn extends AppLocalizations {
   // ── FAQ screen ───────────────────────────────────────────────────────────────
 
   @override
-  String get faqTitle => 'How Rounds works';
+  String get faqTitle => 'FAQ';
   @override
   String get faqSettingsSubtitle => 'Reminders, privacy, battery, backups';
   @override
@@ -365,15 +365,22 @@ class AppLocalizationsEn extends AppLocalizations {
       '(it\'s a small file you can keep anywhere), and import it on a new '
       'phone to pick up right where you left off, reminders included.';
   @override
+  String get faqQHistory => 'Does old history pile up forever?';
+  @override
+  String get faqAHistory =>
+      'Yes, on purpose — past rounds are your payment record, and the '
+      'History tab is built from them. Storage-wise it\'s negligible: a full '
+      'year of bills weighs a few kilobytes, so even a decade of history '
+      'stays feather-light. Deleting a bill is the only thing that erases '
+      'its history, which is why archiving is usually the better choice.';
+  @override
   String get faqQOpenSource => 'Can I request features or see the code?';
   @override
   String get faqAOpenSource =>
       'Rounds is open source. Feature ideas, bug reports, and forks are all '
-      'welcome — the project lives on GitHub:';
+      'welcome — the project lives on GitHub.';
   @override
-  String get faqCopyLinkButton => 'Copy link';
-  @override
-  String get faqLinkCopied => 'Link copied.';
+  String get faqOpenRepoButton => 'Open on GitHub';
   @override
   String get importDataDialogTitle => 'Import data?';
   @override
