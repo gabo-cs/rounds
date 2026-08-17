@@ -265,11 +265,50 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get exportDataTitle => 'Exportar datos';
   @override
-  String get exportDataSubtitle => 'Guarda una copia de seguridad JSON o compártela';
+  String get exportDataSubtitle =>
+      'Guarda una copia de seguridad JSON o compártela';
   @override
   String get importDataTitle => 'Importar datos';
   @override
-  String get importDataSubtitle => 'Restaurar desde una copia de seguridad JSON';
+  String get importDataSubtitle =>
+      'Restaurar desde una copia de seguridad JSON';
+  @override
+  String get backupInfoTooltip => 'Sobre las copias';
+  @override
+  String get backupInfoTitle => 'Sobre las copias';
+  @override
+  String get backupInfoIntro =>
+      'Exportar escribe todo lo que Rounds sabe en un solo archivo que tú '
+      'guardas. Importar lo vuelve a leer.';
+  @override
+  String get backupInfoWhatTitle => 'Es un archivo JSON';
+  @override
+  String get backupInfoWhatBody =>
+      'JSON es un formato de texto plano para intercambiar datos: abierto, '
+      'muy usado y que no pertenece a ninguna empresa. Puedes abrir el '
+      'archivo con cualquier editor de texto. Son simplemente tus datos '
+      'escritos ahí, así que nada queda encerrado dentro de Rounds.';
+  @override
+  String get backupInfoContentsTitle => 'Qué contiene';
+  @override
+  String get backupInfoContentsBody =>
+      'Cada factura, cada mes de tus rondas y cada pago que registraste, con '
+      'montos, fechas, métodos y notas. Rounds escribe el archivo y lo '
+      'vuelve a leer, así que una exportación siempre se importa sin '
+      'problemas en otra instalación.';
+  @override
+  String get backupInfoImportTitle => 'Importar reemplaza todo';
+  @override
+  String get backupInfoImportBody =>
+      'Una copia se restaura tal cual encima de tus datos actuales: nunca se '
+      'combinan. Después se reconstruyen los recordatorios, así que un '
+      'teléfono restaurado vuelve a avisarte a tiempo.';
+  @override
+  String get backupInfoTip =>
+      'Rounds funciona sin conexión, así que ese archivo es tu única copia. '
+      'Expórtalo cada pocos meses y guárdalo donde no lo pierdas.';
+  @override
+  String get backupInfoDismiss => 'Entendido';
   @override
   String get aboutSection => 'Acerca de';
   @override
@@ -350,6 +389,16 @@ class AppLocalizationsEs extends AppLocalizations {
       'pocos meses (es un archivo pequeño que puedes guardar donde quieras) '
       'e impórtalo en un teléfono nuevo para continuar justo donde ibas, '
       'recordatorios incluidos.';
+  @override
+  String get faqQJsonFile => '¿Qué es exactamente el archivo de copia?';
+  @override
+  String get faqAJsonFile =>
+      'Un archivo JSON: texto plano en un formato de intercambio abierto y '
+      'muy usado, que cualquier editor de texto puede abrir y que no '
+      'pertenece a ninguna empresa. Contiene tus facturas, tus rondas y tus '
+      'pagos, y es Rounds quien lo escribe y lo vuelve a leer — así que un '
+      'archivo exportado aquí siempre se importa sin problemas en otro '
+      'lado. Guárdalo donde quieras; es tuyo.';
   @override
   String get faqQHistory => '¿El historial se acumula para siempre?';
   @override
@@ -432,7 +481,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get currencySection => 'Moneda';
 
-
   @override
   String get testNotificationTitle => 'Enviar notificación de prueba';
   @override
@@ -486,15 +534,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String translateCategory(String key) => switch (key) {
-        'Housing' => 'Vivienda',
-        'Utilities' => 'Servicios públicos',
-        'Internet & Phone' => 'Internet y teléfono',
-        'Insurance' => 'Seguros',
-        'Subscriptions' => 'Suscripciones',
-        'Credit Card' => 'Tarjeta de crédito',
-        'Loan' => 'Préstamo',
-        'Transportation' => 'Transporte',
-        'Other' => 'Otro',
-        _ => key,
-      };
+    'Housing' => 'Vivienda',
+    'Utilities' => 'Servicios públicos',
+    'Internet & Phone' => 'Internet y teléfono',
+    'Insurance' => 'Seguros',
+    'Subscriptions' => 'Suscripciones',
+    'Credit Card' => 'Tarjeta de crédito',
+    'Loan' => 'Préstamo',
+    'Transportation' => 'Transporte',
+    'Other' => 'Otro',
+    _ => key,
+  };
 }

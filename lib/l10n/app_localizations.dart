@@ -184,6 +184,19 @@ abstract class AppLocalizations {
   String get exportDataSubtitle;
   String get importDataTitle;
   String get importDataSubtitle;
+
+  /// The (?) beside the Data section header, and the sheet it opens.
+  String get backupInfoTooltip;
+  String get backupInfoTitle;
+  String get backupInfoIntro;
+  String get backupInfoWhatTitle;
+  String get backupInfoWhatBody;
+  String get backupInfoContentsTitle;
+  String get backupInfoContentsBody;
+  String get backupInfoImportTitle;
+  String get backupInfoImportBody;
+  String get backupInfoTip;
+  String get backupInfoDismiss;
   String get aboutSection;
   String get appVersionLabel;
 
@@ -214,6 +227,8 @@ abstract class AppLocalizations {
   String get faqABattery;
   String get faqQBackup;
   String get faqABackup;
+  String get faqQJsonFile;
+  String get faqAJsonFile;
   String get faqQHistory;
   String get faqAHistory;
   String get faqQOpenSource;
@@ -292,8 +307,7 @@ class _AppLocalizationsDelegate
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) =>
-      ['en', 'es'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => ['en', 'es'].contains(locale.languageCode);
 
   @override
   Future<AppLocalizations> load(Locale locale) async {

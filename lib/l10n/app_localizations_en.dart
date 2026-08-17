@@ -97,8 +97,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String paidOfTotal(int paid, int total) => '$paid of $total paid';
   @override
-  String overdueCount(int count) =>
-      count == 1 ? '1 overdue' : '$count overdue';
+  String overdueCount(int count) => count == 1 ? '1 overdue' : '$count overdue';
 
   // ── Bills screen ─────────────────────────────────────────────────────────────
 
@@ -243,8 +242,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get allPaid => 'All paid';
   @override
-  String pendingCount(int count) =>
-      count == 1 ? '1 pending' : '$count pending';
+  String pendingCount(int count) => count == 1 ? '1 pending' : '$count pending';
   @override
   String get noHistoryYet => 'No history yet';
   @override
@@ -288,6 +286,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importDataTitle => 'Import data';
   @override
   String get importDataSubtitle => 'Restore from a JSON backup';
+  @override
+  String get backupInfoTooltip => 'About backups';
+  @override
+  String get backupInfoTitle => 'About backups';
+  @override
+  String get backupInfoIntro =>
+      'Export writes everything Rounds knows into a single file that you '
+      'keep. Import reads one back in.';
+  @override
+  String get backupInfoWhatTitle => 'It\'s a JSON file';
+  @override
+  String get backupInfoWhatBody =>
+      'JSON is a plain-text format for exchanging data — open, widely used, '
+      'and owned by no company. You can open the file in any text editor. '
+      'It is simply your own data written out, so nothing stays locked '
+      'inside Rounds.';
+  @override
+  String get backupInfoContentsTitle => 'What it contains';
+  @override
+  String get backupInfoContentsBody =>
+      'Every bill, every month of your rounds, and every payment you '
+      'recorded — amounts, dates, methods and notes included. Rounds writes '
+      'the file and reads it back, so an export always imports cleanly into '
+      'another install.';
+  @override
+  String get backupInfoImportTitle => 'Importing replaces everything';
+  @override
+  String get backupInfoImportBody =>
+      'A backup is restored as-is over your current data — it is never '
+      'merged. Reminders are rebuilt afterwards, so a restored phone goes '
+      'back to nagging you on schedule.';
+  @override
+  String get backupInfoTip =>
+      'Rounds is offline, so this file is your only copy. Export every few '
+      'months and keep it somewhere you won\'t lose it.';
+  @override
+  String get backupInfoDismiss => 'Got it';
   @override
   String get aboutSection => 'About';
   @override
@@ -365,6 +400,15 @@ class AppLocalizationsEn extends AppLocalizations {
       '(it\'s a small file you can keep anywhere), and import it on a new '
       'phone to pick up right where you left off, reminders included.';
   @override
+  String get faqQJsonFile => 'What exactly is the backup file?';
+  @override
+  String get faqAJsonFile =>
+      'A JSON file: plain text in an open, widely used exchange format that '
+      'any text editor can open and no company owns. It holds your bills, '
+      'your rounds and your payments, and Rounds is what writes it and '
+      'reads it back — so a file exported here always imports cleanly '
+      'somewhere else. Keep it anywhere you like; it is yours.';
+  @override
   String get faqQHistory => 'Does old history pile up forever?';
   @override
   String get faqAHistory =>
@@ -424,8 +468,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get importSuccess => 'Data imported successfully';
   @override
-  String get importErrorInvalidFile =>
-      'The file is not a valid Rounds backup.';
+  String get importErrorInvalidFile => 'The file is not a valid Rounds backup.';
   @override
   String get importErrorUnsupportedVersion =>
       'This backup was created by a newer version of Rounds.';
@@ -442,7 +485,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currencySection => 'Currency';
-
 
   @override
   String get testNotificationTitle => 'Send test notification';
@@ -476,7 +518,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get snooze3Hours => '3 hours';
   @override
-  String reminderRescheduledFor(String time) => 'Reminder rescheduled for $time';
+  String reminderRescheduledFor(String time) =>
+      'Reminder rescheduled for $time';
 
   // ── Payment methods ────────────────────────────────────────────────────────────
 

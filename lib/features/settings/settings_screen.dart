@@ -253,7 +253,10 @@ class SettingsScreen extends ConsumerWidget {
                   ),
 
                   // DATA
-                  _SectionLabel(label: l10n.dataSection),
+                  _SectionLabel(
+                    label: l10n.dataSection,
+                    action: const _BackupInfoButton(),
+                  ),
                   _SettingsCard(
                     children: [
                       _SettingsTile(
@@ -369,20 +372,26 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.label});
+  const _SectionLabel({required this.label, this.action});
 
   final String label;
 
+  /// Optional affordance riding beside the label (the Data section's "?").
+  final Widget? action;
+
   @override
   Widget build(BuildContext context) {
+    final text = Text(
+      label.toUpperCase(),
+      style: AppTypography.eyebrow.copyWith(
+        color: RoundsColors.of(context).textFaint,
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 24, 4, 8),
-      child: Text(
-        label.toUpperCase(),
-        style: AppTypography.eyebrow.copyWith(
-          color: RoundsColors.of(context).textFaint,
-        ),
-      ),
+      child: action == null
+          ? text
+          : Row(children: [text, const SizedBox(width: 2), action!]),
     );
   }
 }
@@ -434,6 +443,190 @@ class _SettingsTile extends StatelessWidget {
       subtitle: subtitle != null ? Text(subtitle!) : null,
       trailing: trailing,
       onTap: onTap,
+    );
+  }
+}
+
+/// Backups hand the user a file and a format — the one place this app asks
+/// them to understand something technical — so the explanation sits next to
+/// the export/import buttons instead of only in the FAQ.
+class _BackupInfoButton extends StatelessWidget {
+  const _BackupInfoButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Tooltip(
+      message: l10n.backupInfoTooltip,
+      child: InkResponse(
+        radius: 20,
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => const _BackupInfoSheet(),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(
+            Icons.help_outline,
+            size: 16,
+            color: RoundsColors.of(context).textFaint,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackupInfoSheet extends StatelessWidget {
+  const _BackupInfoSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final rounds = RoundsColors.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(l10n.backupInfoTitle, style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text(
+                l10n.backupInfoIntro,
+                style: theme.textTheme.bodyMedium!.copyWith(
+                  color: rounds.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _BackupInfoPoint(
+                icon: Icons.data_object,
+                title: l10n.backupInfoWhatTitle,
+                body: l10n.backupInfoWhatBody,
+              ),
+              _BackupInfoPoint(
+                icon: Icons.inventory_2_outlined,
+                title: l10n.backupInfoContentsTitle,
+                body: l10n.backupInfoContentsBody,
+              ),
+              _BackupInfoPoint(
+                icon: Icons.swap_horiz,
+                title: l10n.backupInfoImportTitle,
+                body: l10n.backupInfoImportBody,
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline,
+                      size: 18,
+                      color: rounds.textSecondary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.backupInfoTip,
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: rounds.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.backupInfoDismiss),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackupInfoPoint extends StatelessWidget {
+  const _BackupInfoPoint({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final rounds = RoundsColors.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: cs.onPrimaryContainer),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: theme.textTheme.bodySmall!.copyWith(
+                    color: rounds.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

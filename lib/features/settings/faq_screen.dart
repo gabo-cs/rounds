@@ -37,6 +37,7 @@ class FaqScreen extends StatelessWidget {
           _FaqCard(question: l10n.faqQBattery, answer: l10n.faqABattery),
           _SectionLabel(label: l10n.faqSectionData),
           _FaqCard(question: l10n.faqQBackup, answer: l10n.faqABackup),
+          _FaqCard(question: l10n.faqQJsonFile, answer: l10n.faqAJsonFile),
           _FaqCard(question: l10n.faqQHistory, answer: l10n.faqAHistory),
           _SectionLabel(label: l10n.faqSectionProject),
           _FaqCard(
