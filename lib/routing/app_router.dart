@@ -4,14 +4,21 @@ import 'package:rounds/features/bills/bill_detail_screen.dart';
 import 'package:rounds/features/bills/bill_form_screen.dart';
 import 'package:rounds/features/bills/bills_screen.dart';
 import 'package:rounds/features/history/history_screen.dart';
+import 'package:rounds/features/onboarding/onboarding_screen.dart';
 import 'package:rounds/features/round/round_screen.dart';
 import 'package:rounds/features/settings/faq_screen.dart';
 import 'package:rounds/features/settings/settings_screen.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
-final appRouter = GoRouter(
-  initialLocation: '/',
+/// Built once at startup. First runs start on the onboarding intro, which
+/// exits with `go('/')` — replacing the stack, so back can't return to it.
+GoRouter createAppRouter({required bool showOnboarding}) => GoRouter(
+  initialLocation: showOnboarding ? '/onboarding' : '/',
   routes: [
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingScreen(),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => _ScaffoldWithNav(shell: shell),
       branches: [

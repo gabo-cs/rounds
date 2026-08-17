@@ -133,7 +133,8 @@ lib/
 ```
 
 Feature folders: `round` (the monthly pager — the first tab), `bills` (list/form/detail),
-`history`, `mark_paid` (bottom sheet), `settings`. A feature owns its screens, its
+`history`, `mark_paid` (bottom sheet), `settings` (+ the FAQ screen),
+`onboarding` (first-run intro). A feature owns its screens, its
 `providers/`, and feature-local `widgets/`. Widgets used by only one screen are private
 `_Widget` classes at the bottom of that screen's file — that is the preferred pattern;
 only promote to `widgets/` (feature) or `core/widgets/` (cross-feature) on actual reuse.
@@ -178,7 +179,11 @@ Patterns in use:
 
 ## Routing
 
-`go_router`, flat table in `routing/app_router.dart`. Four tabs via
+`go_router`, flat table in `routing/app_router.dart` (`createAppRouter`, built
+once in `app.dart`; first runs start at `/onboarding` until its done-flag is
+set — the intro ends with the notification-permission ask, and opting out
+keeps `notificationsEnabled` false so the stored toggle stays honest). Four
+tabs via
 `StatefulShellRoute.indexedStack` (`/`, `/bills-tab`, `/history`, `/settings`) with a
 **custom** bottom nav (`_BottomNavBar` — the indicator covers icon+label, which
 `NavigationBar` can't do; don't swap it back). Full-screen flows are top-level routes

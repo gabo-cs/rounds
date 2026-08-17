@@ -368,6 +368,40 @@ class AppLocalizationsEs extends AppLocalizations {
       'bienvenidos — el proyecto vive en GitHub.';
   @override
   String get faqOpenRepoButton => 'Abrir en GitHub';
+
+  // ── Onboarding ───────────────────────────────────────────────────────────────
+
+  @override
+  String get onboardTitle1 => 'Cada mes es una ronda';
+  @override
+  String get onboardBody1 =>
+      'Tus facturas se repiten: arriendo, internet, streaming. Rounds sigue '
+      'cada mes como una ronda: ve de un vistazo qué está pagado, pendiente '
+      'o vencido, y toca una factura para marcarla pagada.';
+  @override
+  String get onboardTitle2 => 'Configura tus facturas una vez';
+  @override
+  String get onboardBody2 =>
+      'Agrega cada factura recurrente con su día de vencimiento — el monto '
+      'es opcional. La pestaña Facturas guarda el conjunto; cada mes nuevo '
+      'arma su ronda a partir de él. Archiva en lugar de eliminar para '
+      'conservar tu historial.';
+  @override
+  String get onboardTitle3 => 'Recordatorios que simplemente funcionan';
+  @override
+  String get onboardBody3 =>
+      'Totalmente offline y a cargo del propio teléfono: un aviso el día '
+      'anterior, el día del vencimiento y a diario una vez vencida — hasta '
+      'que la marques pagada. Permite las notificaciones para que puedan '
+      'llegarte.';
+  @override
+  String get onboardNext => 'Siguiente';
+  @override
+  String get onboardEnableReminders => 'Activar recordatorios';
+  @override
+  String get onboardSkip => 'Quizás luego';
+  @override
+  String get onboardSampleRent => 'Arriendo';
   @override
   String get importDataDialogTitle => '¿Importar datos?';
   @override

@@ -219,6 +219,21 @@ abstract class AppLocalizations {
   String get faqQOpenSource;
   String get faqAOpenSource;
   String get faqOpenRepoButton;
+
+  // ── Onboarding ───────────────────────────────────────────────────────────────
+
+  String get onboardTitle1;
+  String get onboardBody1;
+  String get onboardTitle2;
+  String get onboardBody2;
+  String get onboardTitle3;
+  String get onboardBody3;
+  String get onboardNext;
+  String get onboardEnableReminders;
+  String get onboardSkip;
+
+  /// Sample bill name on the onboarding's Bills page.
+  String get onboardSampleRent;
   String get importDataDialogTitle;
   String get importDataDialogContent;
   String get importAndReplaceButton;

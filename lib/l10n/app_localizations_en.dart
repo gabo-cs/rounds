@@ -381,6 +381,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'welcome — the project lives on GitHub.';
   @override
   String get faqOpenRepoButton => 'Open on GitHub';
+
+  // ── Onboarding ───────────────────────────────────────────────────────────────
+
+  @override
+  String get onboardTitle1 => 'Every month is a round';
+  @override
+  String get onboardBody1 =>
+      'Your bills repeat — rent, internet, streaming. Rounds tracks each '
+      'month as one round: see what\'s paid, pending, or overdue at a '
+      'glance, and tap a bill to mark it paid.';
+  @override
+  String get onboardTitle2 => 'Set up your bills once';
+  @override
+  String get onboardBody2 =>
+      'Add each recurring bill with its due day — the amount is optional. '
+      'The Bills tab holds the set; every new month builds its round from '
+      'it. Archive instead of deleting to keep your history.';
+  @override
+  String get onboardTitle3 => 'Reminders that just work';
+  @override
+  String get onboardBody3 =>
+      'Fully offline, handled by your phone itself: a heads-up the day '
+      'before, on the due day, and daily once overdue — until you mark the '
+      'bill paid. Allow notifications so they can reach you.';
+  @override
+  String get onboardNext => 'Next';
+  @override
+  String get onboardEnableReminders => 'Turn on reminders';
+  @override
+  String get onboardSkip => 'Maybe later';
+  @override
+  String get onboardSampleRent => 'Rent';
   @override
   String get importDataDialogTitle => 'Import data?';
   @override
