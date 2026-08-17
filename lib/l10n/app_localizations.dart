@@ -186,6 +186,38 @@ abstract class AppLocalizations {
   String get importDataSubtitle;
   String get aboutSection;
   String get appVersionLabel;
+
+  // ── FAQ screen ───────────────────────────────────────────────────────────────
+
+  String get faqTitle;
+
+  /// Subtitle for the Settings tile that opens the FAQ.
+  String get faqSettingsSubtitle;
+
+  String get faqSectionBasics;
+  String get faqSectionReminders;
+  String get faqSectionData;
+  String get faqSectionProject;
+
+  String get faqQWhatIsRound;
+  String get faqAWhatIsRound;
+  String get faqQOffline;
+  String get faqAOffline;
+  String get faqQHowReminders;
+  String get faqAHowReminders;
+  String get faqQNoReminders;
+  String get faqANoReminders;
+  String get faqCheckNotifButton;
+  String get faqNotifOk;
+  String get faqNotifIssue;
+  String get faqQBattery;
+  String get faqABattery;
+  String get faqQBackup;
+  String get faqABackup;
+  String get faqQOpenSource;
+  String get faqAOpenSource;
+  String get faqCopyLinkButton;
+  String get faqLinkCopied;
   String get importDataDialogTitle;
   String get importDataDialogContent;
   String get importAndReplaceButton;

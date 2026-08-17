@@ -5,6 +5,7 @@ import 'package:rounds/features/bills/bill_form_screen.dart';
 import 'package:rounds/features/bills/bills_screen.dart';
 import 'package:rounds/features/history/history_screen.dart';
 import 'package:rounds/features/round/round_screen.dart';
+import 'package:rounds/features/settings/faq_screen.dart';
 import 'package:rounds/features/settings/settings_screen.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
@@ -51,6 +52,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/bills/new',
       builder: (context, state) => const BillFormScreen(),
+    ),
+    GoRoute(
+      path: '/faq',
+      builder: (context, state) => const FaqScreen(),
     ),
     GoRoute(
       path: '/bills/:billId/edit',

@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/backup_service.dart';
@@ -270,6 +271,14 @@ class SettingsScreen extends ConsumerWidget {
                   _SectionLabel(label: l10n.aboutSection),
                   _SettingsCard(
                     children: [
+                      _SettingsTile(
+                        icon: Icons.help_outline,
+                        title: l10n.faqTitle,
+                        subtitle: l10n.faqSettingsSubtitle,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/faq'),
+                      ),
+                      const Divider(height: 1, indent: 64, endIndent: 0),
                       _SettingsTile(
                         icon: Icons.info_outline,
                         title: 'Rounds',

@@ -292,6 +292,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutSection => 'About';
   @override
   String get appVersionLabel => 'Version 1.0.0';
+
+  // ── FAQ screen ───────────────────────────────────────────────────────────────
+
+  @override
+  String get faqTitle => 'How Rounds works';
+  @override
+  String get faqSettingsSubtitle => 'Reminders, privacy, battery, backups';
+  @override
+  String get faqSectionBasics => 'The basics';
+  @override
+  String get faqSectionReminders => 'Reminders & battery';
+  @override
+  String get faqSectionData => 'Your data';
+  @override
+  String get faqSectionProject => 'The project';
+  @override
+  String get faqQWhatIsRound => 'What is a "round"?';
+  @override
+  String get faqAWhatIsRound =>
+      'Every month is a new round of the same bills. The Round tab shows how '
+      'the current month is going — what is paid, pending, or overdue — while '
+      'the Bills tab holds the recurring set itself: names, amounts, and due '
+      'days.';
+  @override
+  String get faqQOffline => 'Does Rounds use the internet?';
+  @override
+  String get faqAOffline =>
+      'No. Rounds is fully offline: no accounts, no cloud, no tracking. '
+      'Everything lives in a database on this phone, and nothing ever leaves '
+      'it unless you export it yourself.';
+  @override
+  String get faqQHowReminders => 'How do reminders work?';
+  @override
+  String get faqAHowReminders =>
+      'Reminders are handed to Android in advance as exact alarms, so the '
+      'system shows them on its own — no internet and no background work '
+      'needed. Each unpaid bill reminds you the day before, on the due day, '
+      'and for three days after; once overdue, Rounds nags daily until you '
+      'mark it paid. Marking a bill paid stops its reminders immediately.';
+  @override
+  String get faqQNoReminders => 'I\'m not getting reminders';
+  @override
+  String get faqANoReminders =>
+      'Two system permissions matter: notifications, and "Alarms & '
+      'reminders" (exact alarms). The button below checks both. Some phones '
+      'also shut down apps aggressively to save battery — if reminders still '
+      'go missing, allow Rounds to run unrestricted in your battery '
+      'settings.';
+  @override
+  String get faqCheckNotifButton => 'Check notification settings';
+  @override
+  String get faqNotifOk => 'Notifications are ready.';
+  @override
+  String get faqNotifIssue =>
+      'Check notifications and "Alarms & reminders" for Rounds in system '
+      'settings.';
+  @override
+  String get faqQBattery => 'Does Rounds drain battery?';
+  @override
+  String get faqABattery =>
+      'No. Rounds runs no background services and does no periodic work — '
+      'the system fires reminders by itself, and the app refreshes its '
+      'schedule in the moment you leave it. If your phone ever force-stops '
+      'the app, simply opening it again repairs everything.';
+  @override
+  String get faqQBackup => 'What if I lose or change my phone?';
+  @override
+  String get faqABackup =>
+      'Because Rounds is offline, there is no cloud copy — your data exists '
+      'only on this device. Export a backup from Settings every few months '
+      '(it\'s a small file you can keep anywhere), and import it on a new '
+      'phone to pick up right where you left off, reminders included.';
+  @override
+  String get faqQOpenSource => 'Can I request features or see the code?';
+  @override
+  String get faqAOpenSource =>
+      'Rounds is open source. Feature ideas, bug reports, and forks are all '
+      'welcome — the project lives on GitHub:';
+  @override
+  String get faqCopyLinkButton => 'Copy link';
+  @override
+  String get faqLinkCopied => 'Link copied.';
   @override
   String get importDataDialogTitle => 'Import data?';
   @override

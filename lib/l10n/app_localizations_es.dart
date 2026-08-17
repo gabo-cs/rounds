@@ -274,6 +274,92 @@ class AppLocalizationsEs extends AppLocalizations {
   String get aboutSection => 'Acerca de';
   @override
   String get appVersionLabel => 'Versión 1.0.0';
+
+  // ── FAQ screen ───────────────────────────────────────────────────────────────
+
+  @override
+  String get faqTitle => 'Cómo funciona Rounds';
+  @override
+  String get faqSettingsSubtitle =>
+      'Recordatorios, privacidad, batería, respaldos';
+  @override
+  String get faqSectionBasics => 'Lo básico';
+  @override
+  String get faqSectionReminders => 'Recordatorios y batería';
+  @override
+  String get faqSectionData => 'Tus datos';
+  @override
+  String get faqSectionProject => 'El proyecto';
+  @override
+  String get faqQWhatIsRound => '¿Qué es una "ronda"?';
+  @override
+  String get faqAWhatIsRound =>
+      'Cada mes es una nueva ronda de las mismas facturas. La pestaña Ronda '
+      'muestra cómo va el mes actual — qué está pagado, pendiente o vencido — '
+      'mientras que Facturas contiene el conjunto recurrente: nombres, montos '
+      'y días de vencimiento.';
+  @override
+  String get faqQOffline => '¿Rounds usa internet?';
+  @override
+  String get faqAOffline =>
+      'No. Rounds funciona completamente sin conexión: sin cuentas, sin nube '
+      'y sin rastreo. Todo vive en una base de datos en este teléfono y nada '
+      'sale de aquí a menos que tú mismo lo exportes.';
+  @override
+  String get faqQHowReminders => '¿Cómo funcionan los recordatorios?';
+  @override
+  String get faqAHowReminders =>
+      'Los recordatorios se entregan a Android por adelantado como alarmas '
+      'exactas, así que el sistema los muestra por sí solo — sin internet y '
+      'sin trabajo en segundo plano. Cada factura pendiente te recuerda un '
+      'día antes, el día del vencimiento y durante los tres días siguientes; '
+      'una vez vencida, Rounds insiste a diario hasta que la marques como '
+      'pagada. Marcarla como pagada detiene sus recordatorios de inmediato.';
+  @override
+  String get faqQNoReminders => 'No me llegan los recordatorios';
+  @override
+  String get faqANoReminders =>
+      'Dos permisos del sistema importan: las notificaciones y las "Alarmas '
+      'y recordatorios" (alarmas exactas). El botón de abajo revisa ambos. '
+      'Algunos teléfonos además cierran apps agresivamente para ahorrar '
+      'batería — si aun así se pierden recordatorios, permite que Rounds '
+      'funcione sin restricciones en los ajustes de batería.';
+  @override
+  String get faqCheckNotifButton => 'Revisar ajustes de notificaciones';
+  @override
+  String get faqNotifOk => 'Las notificaciones están listas.';
+  @override
+  String get faqNotifIssue =>
+      'Revisa las notificaciones y las "Alarmas y recordatorios" de Rounds '
+      'en los ajustes del sistema.';
+  @override
+  String get faqQBattery => '¿Rounds gasta batería?';
+  @override
+  String get faqABattery =>
+      'No. Rounds no ejecuta servicios en segundo plano ni trabajo '
+      'periódico — el sistema dispara los recordatorios por su cuenta y la '
+      'app actualiza su programación en el momento en que la dejas. Si tu '
+      'teléfono llega a forzar el cierre de la app, basta con abrirla de '
+      'nuevo para reparar todo.';
+  @override
+  String get faqQBackup => '¿Y si pierdo o cambio de teléfono?';
+  @override
+  String get faqABackup =>
+      'Como Rounds es offline, no hay copia en la nube — tus datos existen '
+      'solo en este dispositivo. Exporta un respaldo desde Ajustes cada '
+      'pocos meses (es un archivo pequeño que puedes guardar donde quieras) '
+      'e impórtalo en un teléfono nuevo para continuar justo donde ibas, '
+      'recordatorios incluidos.';
+  @override
+  String get faqQOpenSource => '¿Puedo pedir funciones o ver el código?';
+  @override
+  String get faqAOpenSource =>
+      'Rounds es de código abierto. Ideas, reportes de errores y forks son '
+      'bienvenidos — el proyecto vive en GitHub:';
+  @override
+  String get faqCopyLinkButton => 'Copiar enlace';
+  @override
+  String get faqLinkCopied => 'Enlace copiado.';
   @override
   String get importDataDialogTitle => '¿Importar datos?';
   @override

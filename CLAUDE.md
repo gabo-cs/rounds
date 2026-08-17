@@ -182,7 +182,8 @@ Patterns in use:
 `StatefulShellRoute.indexedStack` (`/`, `/bills-tab`, `/history`, `/settings`) with a
 **custom** bottom nav (`_BottomNavBar` — the indicator covers icon+label, which
 `NavigationBar` can't do; don't swap it back). Full-screen flows are top-level routes
-pushed over the shell: `/bills/new`, `/bills/:billId`, `/bills/:billId/edit`.
+pushed over the shell: `/bills/new`, `/bills/:billId`, `/bills/:billId/edit`,
+`/faq` (the in-app FAQ, reached from Settings).
 Cross-tab navigation = set state, then `context.go('/')` (see history → round).
 Mark-paid is a `showModalBottomSheet`, not a route.
 
