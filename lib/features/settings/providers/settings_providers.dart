@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/notification_service.dart';
@@ -42,10 +44,23 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   final SharedPreferences _prefs;
 
+  /// The language a fresh install starts in: the phone's, when it's one the
+  /// app ships. Pure so the mapping is testable.
+  static String defaultLanguageCode(ui.Locale deviceLocale) =>
+      deviceLocale.languageCode == 'es' ? 'es' : 'en';
+
   static AppSettings _load(SharedPreferences prefs) {
     final index = prefs.getInt(_keyThemeMode) ?? ThemeMode.system.index;
     final notifications = prefs.getBool(_keyNotifications) ?? true;
-    final language = prefs.getString(_keyLanguage) ?? 'en';
+    var language = prefs.getString(_keyLanguage);
+    if (language == null) {
+      // First run: follow the phone rather than defaulting to English.
+      // Persisted immediately so the direct prefs readers (the reminder
+      // pass, the monthly kickoff) see the same answer as the UI.
+      language =
+          defaultLanguageCode(ui.PlatformDispatcher.instance.locale);
+      prefs.setString(_keyLanguage, language);
+    }
     // Falls back to the default rather than throwing if the stored name is
     // from a currency that no longer exists.
     final currencyName = prefs.getString(_keyCurrency);

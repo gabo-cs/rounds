@@ -355,6 +355,9 @@ abstract `AppLocalizations` (grouped with `// ──` section headers); `_en.dar
 `_es.dart` implement it. Adding a string = abstract member + **both** implementations
 (the compiler enforces it — that's the point of this design).
 
+- First run defaults to the device language when it's one the app ships
+  (`SettingsNotifier.defaultLanguageCode`), persisted immediately so direct
+  prefs readers agree with the UI; after that the in-app setting rules.
 - In widgets: `AppLocalizations.of(context)`.
 - Outside the widget tree (notifications): construct directly —
   `languageCode == 'es' ? AppLocalizationsEs() : AppLocalizationsEn()`.
