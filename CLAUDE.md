@@ -233,7 +233,7 @@ All logic in `core/utils/notification_service.dart` (singleton,
   one nag too many), 6–9 held days 4–7 of the original seven-day ladder.
   Nothing plans them, but upgraded installs still have them armed, so every
   clearing path (`_kEveryOffset`, the overdue takeover, the pre-due plan's
-  slot-2 clear) keeps cancelling them until they expire. Reserved IDs: 999999 (test), 1000001 (monthly kickoff).
+  slot-2 clear) keeps cancelling them until they expire. Reserved IDs: 999999 (debug-only test tile), 1000001 (monthly kickoff).
   New notification kinds need IDs that can't collide with `instanceId * 10 + n`.
 - **Scheduling model — a small rolling window, re-armed blindly.** This is the
   load-bearing design decision. Do **not** "optimize" it back into a diff

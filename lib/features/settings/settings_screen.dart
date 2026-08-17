@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -183,65 +184,71 @@ class SettingsScreen extends ConsumerWidget {
                           },
                         ),
                       ),
-                      const Divider(height: 1, indent: 64, endIndent: 0),
-                      _SettingsTile(
-                        icon: Icons.bug_report_outlined,
-                        title: l10n.testNotificationTitle,
-                        subtitle: l10n.testNotificationSubtitle,
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () async {
-                          final selected = ref.read(selectedMonthProvider);
-                          final instances = ref
-                              .read(monthInstancesProvider(selected))
-                              .valueOrNull;
-                          final last = instances?.isNotEmpty == true
-                              ? instances!.reduce(
-                                  (a, b) =>
-                                      a.instance.id > b.instance.id ? a : b,
-                                )
-                              : null;
-                          if (last == null) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(l10n.noBillsThisMonth)),
-                              );
-                            }
-                            return;
-                          }
-                          try {
-                            await NotificationService.instance
-                                .requestExactAlarmsPermission();
-                            final current = ref.read(settingsProvider);
-                            await NotificationService.instance
-                                .scheduleTestNotification(
-                                  last,
-                                  languageCode: current.languageCode,
-                                  currency: current.currency,
+                      // Debug-only diagnostics: compile-time constant, so the
+                      // release build tree-shakes the whole tile away.
+                      if (kDebugMode) ...[
+                        const Divider(height: 1, indent: 64, endIndent: 0),
+                        _SettingsTile(
+                          icon: Icons.bug_report_outlined,
+                          title: l10n.testNotificationTitle,
+                          subtitle: l10n.testNotificationSubtitle,
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () async {
+                            final selected = ref.read(selectedMonthProvider);
+                            final instances = ref
+                                .read(monthInstancesProvider(selected))
+                                .valueOrNull;
+                            final last = instances?.isNotEmpty == true
+                                ? instances!.reduce(
+                                    (a, b) =>
+                                        a.instance.id > b.instance.id ? a : b,
+                                  )
+                                : null;
+                            if (last == null) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(l10n.noBillsThisMonth),
+                                  ),
                                 );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    l10n.testNotificationScheduled(
-                                      last.bill.name,
+                              }
+                              return;
+                            }
+                            try {
+                              await NotificationService.instance
+                                  .requestExactAlarmsPermission();
+                              final current = ref.read(settingsProvider);
+                              await NotificationService.instance
+                                  .scheduleTestNotification(
+                                    last,
+                                    languageCode: current.languageCode,
+                                    currency: current.currency,
+                                  );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      l10n.testNotificationScheduled(
+                                        last.bill.name,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    l10n.testNotificationFailed('$e'),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      l10n.testNotificationFailed('$e'),
+                                    ),
                                   ),
-                                ),
-                              );
+                                );
+                              }
                             }
-                          }
-                        },
-                      ),
+                          },
+                        ),
+                      ],
                     ],
                   ),
 
