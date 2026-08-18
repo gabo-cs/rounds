@@ -322,7 +322,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Rounds is offline, so this file is your only copy. Export every few '
       'months and keep it somewhere you won\'t lose it.';
   @override
-  String get backupInfoDismiss => 'Got it';
+  String get currencyInfoTooltip => 'About the currency';
+  @override
+  String get currencyInfoTitle => 'About the currency';
+  @override
+  String get currencyInfoIntro =>
+      'It decides how amounts are written — the symbol and the separators. '
+      'That is all it does.';
+  @override
+  String get currencyInfoDisplayTitle => 'Display only';
+  @override
+  String get currencyInfoDisplayBody =>
+      'Amounts are stored as plain numbers. Switching currency changes how '
+      'they read — 1,500 or 1.500 — and never the numbers themselves, so '
+      'nothing in your history is rewritten.';
+  @override
+  String get currencyInfoNoRatesTitle => 'No conversion, no rates';
+  @override
+  String get currencyInfoNoRatesBody =>
+      'Rounds is offline and knows no exchange rates: 1,500 stays 1,500 '
+      'whichever currency you pick. It is one choice for the whole app — a '
+      'single bill can\'t have a currency of its own.';
+  @override
+  String get currencyInfoTip =>
+      'The sample beside each code is exactly how your amounts will read. '
+      'Pick the one that looks the way you write them.';
+  @override
+  String get infoSheetDismiss => 'Got it';
   @override
   String get aboutSection => 'About';
   @override

@@ -104,7 +104,13 @@ class SettingsScreen extends ConsumerWidget {
                   ),
 
                   // CURRENCY
-                  _SectionLabel(label: l10n.currencySection),
+                  _SectionLabel(
+                    label: l10n.currencySection,
+                    action: _SectionInfoButton(
+                      tooltip: l10n.currencyInfoTooltip,
+                      sheet: _currencyInfoSheet(l10n),
+                    ),
+                  ),
                   _SettingsCard(
                     children: [
                       Padding(
@@ -114,7 +120,10 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                         // ISO codes need no translation, and what the choice
                         // actually changes is the symbol and the separators —
-                        // so that's what each option shows.
+                        // so that's what each option shows. The specimen
+                        // carries cents so both separators are visible at
+                        // once, and so it reads as a sample rather than as
+                        // an amount somebody set.
                         child: DropdownButtonFormField<Currency>(
                           initialValue: settings.currency,
                           decoration: const InputDecoration(),
@@ -124,7 +133,7 @@ class SettingsScreen extends ConsumerWidget {
                                 value: currency,
                                 child: Text(
                                   '${currency.code} · '
-                                  '${currency.format(1500)}',
+                                  '${currency.format(1234.56)}',
                                 ),
                               ),
                           ],
@@ -255,7 +264,10 @@ class SettingsScreen extends ConsumerWidget {
                   // DATA
                   _SectionLabel(
                     label: l10n.dataSection,
-                    action: const _BackupInfoButton(),
+                    action: _SectionInfoButton(
+                      tooltip: l10n.backupInfoTooltip,
+                      sheet: _backupInfoSheet(l10n),
+                    ),
                   ),
                   _SettingsCard(
                     children: [
@@ -465,17 +477,20 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-/// Backups hand the user a file and a format — the one place this app asks
-/// them to understand something technical — so the explanation sits next to
-/// the export/import buttons instead of only in the FAQ.
-class _BackupInfoButton extends StatelessWidget {
-  const _BackupInfoButton();
+/// The "?" that rides beside a Settings section header. Two sections hand
+/// the user something they can reasonably misread — a file format, and a
+/// setting that looks like it might convert money — so each carries its own
+/// explainer instead of relying on the FAQ.
+class _SectionInfoButton extends StatelessWidget {
+  const _SectionInfoButton({required this.tooltip, required this.sheet});
+
+  final String tooltip;
+  final Widget sheet;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return Tooltip(
-      message: l10n.backupInfoTooltip,
+      message: tooltip,
       child: InkResponse(
         radius: 20,
         onTap: () => showModalBottomSheet(
@@ -485,7 +500,7 @@ class _BackupInfoButton extends StatelessWidget {
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          builder: (_) => const _BackupInfoSheet(),
+          builder: (_) => sheet,
         ),
         child: Padding(
           padding: const EdgeInsets.all(6),
@@ -500,8 +515,59 @@ class _BackupInfoButton extends StatelessWidget {
   }
 }
 
-class _BackupInfoSheet extends StatelessWidget {
-  const _BackupInfoSheet();
+_InfoSheet _backupInfoSheet(AppLocalizations l10n) => _InfoSheet(
+  title: l10n.backupInfoTitle,
+  intro: l10n.backupInfoIntro,
+  tip: l10n.backupInfoTip,
+  points: [
+    _InfoPoint(
+      icon: Icons.data_object,
+      title: l10n.backupInfoWhatTitle,
+      body: l10n.backupInfoWhatBody,
+    ),
+    _InfoPoint(
+      icon: Icons.inventory_2_outlined,
+      title: l10n.backupInfoContentsTitle,
+      body: l10n.backupInfoContentsBody,
+    ),
+    _InfoPoint(
+      icon: Icons.swap_horiz,
+      title: l10n.backupInfoImportTitle,
+      body: l10n.backupInfoImportBody,
+    ),
+  ],
+);
+
+_InfoSheet _currencyInfoSheet(AppLocalizations l10n) => _InfoSheet(
+  title: l10n.currencyInfoTitle,
+  intro: l10n.currencyInfoIntro,
+  tip: l10n.currencyInfoTip,
+  points: [
+    _InfoPoint(
+      icon: Icons.visibility_outlined,
+      title: l10n.currencyInfoDisplayTitle,
+      body: l10n.currencyInfoDisplayBody,
+    ),
+    _InfoPoint(
+      icon: Icons.currency_exchange,
+      title: l10n.currencyInfoNoRatesTitle,
+      body: l10n.currencyInfoNoRatesBody,
+    ),
+  ],
+);
+
+class _InfoSheet extends StatelessWidget {
+  const _InfoSheet({
+    required this.title,
+    required this.intro,
+    required this.points,
+    required this.tip,
+  });
+
+  final String title;
+  final String intro;
+  final List<_InfoPoint> points;
+  final String tip;
 
   @override
   Widget build(BuildContext context) {
@@ -529,31 +595,17 @@ class _BackupInfoSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              Text(l10n.backupInfoTitle, style: theme.textTheme.headlineSmall),
+              Text(title, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                l10n.backupInfoIntro,
+                intro,
                 style: theme.textTheme.bodyMedium!.copyWith(
                   color: rounds.textSecondary,
                   height: 1.45,
                 ),
               ),
               const SizedBox(height: 20),
-              _BackupInfoPoint(
-                icon: Icons.data_object,
-                title: l10n.backupInfoWhatTitle,
-                body: l10n.backupInfoWhatBody,
-              ),
-              _BackupInfoPoint(
-                icon: Icons.inventory_2_outlined,
-                title: l10n.backupInfoContentsTitle,
-                body: l10n.backupInfoContentsBody,
-              ),
-              _BackupInfoPoint(
-                icon: Icons.swap_horiz,
-                title: l10n.backupInfoImportTitle,
-                body: l10n.backupInfoImportBody,
-              ),
+              ...points,
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -571,7 +623,7 @@ class _BackupInfoSheet extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        l10n.backupInfoTip,
+                        tip,
                         style: theme.textTheme.bodySmall!.copyWith(
                           color: rounds.textSecondary,
                           height: 1.4,
@@ -584,7 +636,7 @@ class _BackupInfoSheet extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.backupInfoDismiss),
+                child: Text(l10n.infoSheetDismiss),
               ),
             ],
           ),
@@ -594,8 +646,8 @@ class _BackupInfoSheet extends StatelessWidget {
   }
 }
 
-class _BackupInfoPoint extends StatelessWidget {
-  const _BackupInfoPoint({
+class _InfoPoint extends StatelessWidget {
+  const _InfoPoint({
     required this.icon,
     required this.title,
     required this.body,

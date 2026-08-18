@@ -196,7 +196,19 @@ abstract class AppLocalizations {
   String get backupInfoImportTitle;
   String get backupInfoImportBody;
   String get backupInfoTip;
-  String get backupInfoDismiss;
+
+  /// The (?) beside the Currency section header, and the sheet it opens.
+  String get currencyInfoTooltip;
+  String get currencyInfoTitle;
+  String get currencyInfoIntro;
+  String get currencyInfoDisplayTitle;
+  String get currencyInfoDisplayBody;
+  String get currencyInfoNoRatesTitle;
+  String get currencyInfoNoRatesBody;
+  String get currencyInfoTip;
+
+  /// Dismisses any of the Settings explainer sheets.
+  String get infoSheetDismiss;
   String get aboutSection;
   String get appVersionLabel;
 
