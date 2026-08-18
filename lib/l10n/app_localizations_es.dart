@@ -77,6 +77,32 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get buildRoundButton => 'Armar esta ronda';
   @override
+  String get markAllPaidAction => 'Marcar todas como pagadas';
+  @override
+  String get markAllPaidDialogTitle => '¿Marcar la ronda como pagada?';
+  @override
+  String markAllPaidCurrentMessage(int count) => count == 1
+      ? 'La factura que sigue abierta en esta ronda quedará registrada como '
+            'pagada hoy. Después puedes abrirla para agregar el monto o el '
+            'método.'
+      : 'Las $count facturas que siguen abiertas en esta ronda quedarán '
+            'registradas como pagadas hoy. Después puedes abrir cualquiera '
+            'para agregar el monto o el método.';
+  @override
+  String markAllPaidPastMessage(int count) => count == 1
+      ? 'La factura que sigue abierta quedará registrada como pagada en su '
+            'propia fecha de vencimiento, porque la ronda ya pasó. Después '
+            'puedes abrirla para ajustar los detalles.'
+      : 'Las $count facturas que siguen abiertas quedarán registradas como '
+            'pagadas en sus propias fechas de vencimiento, porque la ronda ya '
+            'pasó. Después puedes abrir cualquiera para ajustar los detalles.';
+  @override
+  String get markAllPaidConfirm => 'Marcar todas';
+  @override
+  String markAllPaidDone(int count) => count == 1
+      ? '1 factura marcada como pagada'
+      : '$count facturas marcadas como pagadas';
+  @override
   String get todayButton => 'Hoy';
   @override
   String get previousMonthTooltip => 'Mes anterior';

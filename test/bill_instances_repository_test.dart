@@ -79,6 +79,57 @@ void main() {
     });
   });
 
+  group('markManyPaid', () {
+    test('settles every listed instance in one batch', () async {
+      final rentId = await createBill('Rent', dueDay: 1);
+      final schoolId = await createBill('School fees', dueDay: 10);
+      final rent = await instanceFor(rentId, 2026, 6);
+      final school = await instanceFor(schoolId, 2026, 6);
+
+      await instancesRepo.markManyPaid({
+        rent.id: DateTime(2026, 6, 1),
+        school.id: DateTime(2026, 6, 10),
+      });
+
+      final all = await instancesRepo.getAllInstances();
+      expect(
+        all.firstWhere((i) => i.id == rent.id).paidAt,
+        DateTime(2026, 6, 1),
+      );
+      expect(
+        all.firstWhere((i) => i.id == school.id).paidAt,
+        DateTime(2026, 6, 10),
+      );
+      expect(all.every((i) => i.isPaid), isTrue);
+    });
+
+    test('leaves an already-paid instance exactly as it was', () async {
+      final billId = await createBill('Rent', dueDay: 1);
+      final june = await instanceFor(billId, 2026, 6);
+      await instancesRepo.markPaid(
+        instanceId: june.id,
+        paidAt: DateTime(2026, 6, 3),
+        referenceNote: 'cash',
+        amountPaid: 1200,
+      );
+
+      await instancesRepo.markManyPaid({june.id: DateTime(2026, 6, 1)});
+
+      final after = (await instancesRepo.getAllInstances()).firstWhere(
+        (i) => i.id == june.id,
+      );
+      expect(after.paidAt, DateTime(2026, 6, 3));
+      expect(after.referenceNote, 'cash');
+      expect(after.amountPaid, 1200);
+    });
+
+    test('is a no-op for an empty round', () async {
+      await instancesRepo.markManyPaid({});
+
+      expect(await instancesRepo.getAllInstances(), isEmpty);
+    });
+  });
+
   group('getUnpaidInstancesForMonth', () {
     test('returns only that month, unpaid, non-archived', () async {
       final billId = await createBill('Internet');

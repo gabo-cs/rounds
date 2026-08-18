@@ -95,6 +95,30 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get buildRoundButton => 'Build this round';
   @override
+  String get markAllPaidAction => 'Mark all as paid';
+  @override
+  String get markAllPaidDialogTitle => 'Mark the round as paid?';
+  @override
+  String markAllPaidCurrentMessage(int count) => count == 1
+      ? 'The bill still open in this round will be recorded as paid today. '
+            'You can open it afterwards to add the amount or the method.'
+      : 'All $count bills still open in this round will be recorded as paid '
+            'today. You can open any of them afterwards to add the amount or '
+            'the method.';
+  @override
+  String markAllPaidPastMessage(int count) => count == 1
+      ? 'The bill still open in this round will be recorded as paid on its '
+            'own due date, since the round is already past. You can open it '
+            'afterwards to adjust the details.'
+      : 'All $count bills still open in this round will be recorded as paid '
+            'on their own due dates, since the round is already past. You '
+            'can open any of them afterwards to adjust the details.';
+  @override
+  String get markAllPaidConfirm => 'Mark all as paid';
+  @override
+  String markAllPaidDone(int count) =>
+      count == 1 ? '1 bill marked as paid' : '$count bills marked as paid';
+  @override
   String get todayButton => 'Today';
   @override
   String get previousMonthTooltip => 'Previous month';

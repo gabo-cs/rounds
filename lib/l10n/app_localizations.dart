@@ -76,6 +76,16 @@ abstract class AppLocalizations {
   String get noRoundRecordedTitle;
   String get noRoundRecordedSubtitle;
   String get buildRoundButton;
+
+  /// Settling every open bill in a round at once. The round being the
+  /// current one decides what date gets recorded, so the confirmation copy
+  /// differs between the two.
+  String get markAllPaidAction;
+  String get markAllPaidDialogTitle;
+  String markAllPaidCurrentMessage(int count);
+  String markAllPaidPastMessage(int count);
+  String get markAllPaidConfirm;
+  String markAllPaidDone(int count);
   String get todayButton;
   String get previousMonthTooltip;
   String get nextMonthTooltip;

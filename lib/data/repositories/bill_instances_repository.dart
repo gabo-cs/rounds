@@ -177,6 +177,33 @@ class BillInstancesRepository {
     );
   }
 
+  /// Settle several instances at once, each with its own payment date.
+  ///
+  /// One batch, so the month's stream emits once instead of once per bill,
+  /// and a half-applied round can't survive a failure mid-way. The companion
+  /// is deliberately partial: these instances are unpaid, so their payment
+  /// details are already null and there is nothing to clear.
+  Future<void> markManyPaid(Map<int, DateTime> paidAtByInstanceId) async {
+    if (paidAtByInstanceId.isEmpty) return;
+
+    final now = DateTime.now();
+    await _db.batch((batch) {
+      for (final entry in paidAtByInstanceId.entries) {
+        batch.update(
+          _db.billInstances,
+          BillInstancesCompanion(
+            isPaid: const Value(true),
+            paidAt: Value(entry.value),
+            updatedAt: Value(now),
+          ),
+          // Guarded on isPaid so a bill settled individually while the
+          // confirmation was open keeps the details it was settled with.
+          where: (i) => i.id.equals(entry.key) & i.isPaid.equals(false),
+        );
+      }
+    });
+  }
+
   Future<void> unmarkPaid(int instanceId) {
     return (_db.update(_db.billInstances)
           ..where((i) => i.id.equals(instanceId)))
