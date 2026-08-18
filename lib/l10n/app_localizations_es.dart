@@ -452,6 +452,12 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get onboardSampleRent => 'Arriendo';
   @override
+  String get onboardSampleSchool => 'Colegio';
+  @override
+  String get onboardSampleSchoolCategory => 'Educación';
+  @override
+  String get onboardSampleCreditCard => 'Tarjeta de crédito';
+  @override
   String get importDataDialogTitle => '¿Importar datos?';
   @override
   String get importDataDialogContent =>
@@ -462,10 +468,12 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String importSuccessSummary(int bills, int records) {
     final verb = bills == 1 && records == 1 ? 'Se importó' : 'Se importaron';
-    final recordsLabel =
-        records == 1 ? '1 registro de pago' : '$records registros de pago';
+    final recordsLabel = records == 1
+        ? '1 registro de pago'
+        : '$records registros de pago';
     return '$verb ${billsCount(bills)} y $recordsLabel.';
   }
+
   @override
   String get importErrorInvalidFile =>
       'El archivo no es una copia de seguridad válida de Rounds.';

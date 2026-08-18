@@ -72,11 +72,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: PageView(
                 controller: _controller,
                 onPageChanged: (page) => setState(() => _page = page),
-                children: const [
-                  _RoundPage(),
-                  _BillsPage(),
-                  _RemindersPage(),
-                ],
+                children: const [_RoundPage(), _BillsPage(), _RemindersPage()],
               ),
             ),
             Row(
@@ -226,9 +222,24 @@ class _BillsPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _SampleBillRow(name: l10n.onboardSampleRent, dueDay: 1),
-              _SampleBillRow(name: 'Internet', dueDay: 18),
-              _SampleBillRow(name: 'Netflix', dueDay: 27),
+              // Bills you can't hand to a bank: the ones somebody has to
+              // remember are exactly what Rounds is for.
+              _SampleBillRow(
+                name: l10n.onboardSampleRent,
+                category: 'Housing',
+                dueDay: 1,
+              ),
+              _SampleBillRow(
+                name: l10n.onboardSampleSchool,
+                category: 'Education',
+                categoryLabel: l10n.onboardSampleSchoolCategory,
+                dueDay: 10,
+              ),
+              _SampleBillRow(
+                name: l10n.onboardSampleCreditCard,
+                category: 'Credit Card',
+                dueDay: 22,
+              ),
             ],
           ),
         ),
@@ -240,29 +251,62 @@ class _BillsPage extends StatelessWidget {
 }
 
 class _SampleBillRow extends StatelessWidget {
-  const _SampleBillRow({required this.name, required this.dueDay});
+  const _SampleBillRow({
+    required this.name,
+    required this.category,
+    required this.dueDay,
+    this.categoryLabel,
+  });
 
   final String name;
+
+  /// English category key — it drives the icon, which resolves on English
+  /// keywords and so would fall back on a translated name.
+  final String category;
+
   final int dueDay;
+
+  /// Display label for a category outside the built-in list, which
+  /// [AppLocalizations.translateCategory] can't translate.
+  final String? categoryLabel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final rounds = RoundsColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          BillIcon(name: name, size: 38),
+          BillIcon(name: name, category: category, size: 38),
           const SizedBox(width: 12),
-          Text(name, style: theme.textTheme.titleMedium),
-          const Spacer(),
-          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: theme.textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  categoryLabel ?? l10n.translateCategory(category),
+                  style: theme.textTheme.bodySmall!.copyWith(
+                    color: rounds.textFaint,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
           Text(
             l10n.dueThe(dueDay),
-            style: AppTypography.monoMeta.copyWith(
-              color: RoundsColors.of(context).textFaint,
-            ),
+            style: AppTypography.monoMeta.copyWith(color: rounds.textFaint),
           ),
         ],
       ),
@@ -283,11 +327,7 @@ class _RemindersPage extends StatelessWidget {
         strokeWidth: 10,
         segmentColors: const [],
         trackColor: cs.outlineVariant,
-        child: Icon(
-          Icons.notifications_outlined,
-          size: 48,
-          color: cs.primary,
-        ),
+        child: Icon(Icons.notifications_outlined, size: 48, color: cs.primary),
       ),
       title: l10n.onboardTitle3,
       body: l10n.onboardBody3,

@@ -458,6 +458,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onboardSampleRent => 'Rent';
   @override
+  String get onboardSampleSchool => 'School fees';
+  @override
+  String get onboardSampleSchoolCategory => 'Education';
+  @override
+  String get onboardSampleCreditCard => 'Credit card';
+  @override
   String get importDataDialogTitle => 'Import data?';
   @override
   String get importDataDialogContent =>
@@ -467,10 +473,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importAndReplaceButton => 'Import & Replace';
   @override
   String importSuccessSummary(int bills, int records) {
-    final recordsLabel =
-        records == 1 ? '1 payment record' : '$records payment records';
+    final recordsLabel = records == 1
+        ? '1 payment record'
+        : '$records payment records';
     return 'Imported ${billsCount(bills)} and $recordsLabel.';
   }
+
   @override
   String get importErrorInvalidFile => 'The file is not a valid Rounds backup.';
   @override

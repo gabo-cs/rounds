@@ -247,11 +247,19 @@ abstract class AppLocalizations {
   String get onboardEnableReminders;
   String get onboardSkip;
 
-  /// Sample bill name on the onboarding's Bills page.
+  /// Sample bills on the onboarding's Bills page — deliberately the kind
+  /// nobody can put on autopay, since those are the ones Rounds is for.
   String get onboardSampleRent;
+  String get onboardSampleSchool;
+
+  /// A category outside [AppConstants.categories], so the samples show that
+  /// categories can be anything the user types.
+  String get onboardSampleSchoolCategory;
+  String get onboardSampleCreditCard;
   String get importDataDialogTitle;
   String get importDataDialogContent;
   String get importAndReplaceButton;
+
   /// Post-import confirmation with what actually arrived, e.g.
   /// "Imported 14 bills and 42 payment records."
   String importSuccessSummary(int bills, int records);
