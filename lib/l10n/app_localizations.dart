@@ -252,7 +252,9 @@ abstract class AppLocalizations {
   String get importDataDialogTitle;
   String get importDataDialogContent;
   String get importAndReplaceButton;
-  String get importSuccess;
+  /// Post-import confirmation with what actually arrived, e.g.
+  /// "Imported 14 bills and 42 payment records."
+  String importSuccessSummary(int bills, int records);
   String get importErrorInvalidFile;
   String get importErrorUnsupportedVersion;
   String get importErrorReadFailed;

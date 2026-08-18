@@ -466,7 +466,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get importAndReplaceButton => 'Import & Replace';
   @override
-  String get importSuccess => 'Data imported successfully';
+  String importSuccessSummary(int bills, int records) {
+    final recordsLabel =
+        records == 1 ? '1 payment record' : '$records payment records';
+    return 'Imported ${billsCount(bills)} and $recordsLabel.';
+  }
   @override
   String get importErrorInvalidFile => 'The file is not a valid Rounds backup.';
   @override

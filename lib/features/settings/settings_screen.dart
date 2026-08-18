@@ -339,35 +339,53 @@ class SettingsScreen extends ConsumerWidget {
     final path = result?.files.single.path;
     if (path == null || !context.mounted) return;
 
-    final service = BackupService(ref.read(billInstancesRepositoryProvider));
+    final repo = ref.read(billInstancesRepositoryProvider);
+    final service = BackupService(repo);
     final error = await service.importFromFile(path);
 
-    if (error == null) {
-      // Reminders scheduled before the import reference instance IDs from the
-      // replaced data — rebuild the schedule from scratch.
+    if (error != null) {
+      if (!context.mounted) return;
+      final message = switch (error) {
+        ImportError.invalidFile => l10n.importErrorInvalidFile,
+        ImportError.unsupportedVersion => l10n.importErrorUnsupportedVersion,
+        ImportError.readFailed => l10n.importErrorReadFailed,
+        ImportError.unknown => l10n.importErrorGeneric,
+      };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    // Confirm right away, with what actually arrived — the reminder rebuild
+    // below takes seconds, and a confirmation that shows up after it feels
+    // like no confirmation at all.
+    final bills = (await repo.getAllBills()).length;
+    final records = (await repo.getAllInstances()).length;
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.importSuccessSummary(bills, records))),
+      );
+    }
+
+    // Reminders scheduled before the import reference instance IDs from the
+    // replaced data — rebuild the schedule from scratch. Guarded: a
+    // scheduling hiccup must not surface as a failure of an import that
+    // already succeeded (the next re-arm pass repairs the schedule anyway).
+    try {
       await NotificationService.instance.cancelAll();
       final settings = ref.read(settingsProvider);
       if (settings.notificationsEnabled) {
         await refreshReminderSchedule(
           billsRepo: ref.read(billsRepositoryProvider),
-          instancesRepo: ref.read(billInstancesRepositoryProvider),
+          instancesRepo: repo,
           languageCode: settings.languageCode,
           currency: settings.currency,
         );
       }
+    } catch (e, st) {
+      debugPrint('Post-import reminder rebuild failed: $e\n$st');
     }
-
-    if (!context.mounted) return;
-    final message = switch (error) {
-      null => l10n.importSuccess,
-      ImportError.invalidFile => l10n.importErrorInvalidFile,
-      ImportError.unsupportedVersion => l10n.importErrorUnsupportedVersion,
-      ImportError.readFailed => l10n.importErrorReadFailed,
-      ImportError.unknown => l10n.importErrorGeneric,
-    };
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
