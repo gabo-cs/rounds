@@ -80,6 +80,7 @@ abstract class AppLocalizations {
   /// Settling every open bill in a round at once. The round being the
   /// current one decides what date gets recorded, so the confirmation copy
   /// differs between the two.
+  String get roundMenuTooltip;
   String get markAllPaidAction;
   String get markAllPaidDialogTitle;
   String markAllPaidCurrentMessage(int count);

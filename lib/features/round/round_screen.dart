@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
-import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/core/widgets/empty_state.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
-import 'package:rounds/features/round/providers/mark_month_paid_providers.dart';
 import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/features/round/widgets/bill_card.dart';
 import 'package:rounds/features/round/widgets/month_navigator.dart';
@@ -213,14 +211,6 @@ class _MonthPage extends ConsumerWidget {
           // No FAB on this screen, so the list only needs breathing room.
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
           children: [
-            if (unpaid.isNotEmpty)
-              Align(
-                alignment: Alignment.centerRight,
-                child: _MarkAllPaidButton(
-                  busy: ref.watch(markMonthPaidProvider(month)),
-                  onPressed: () => _markAllPaid(context, ref, unpaid),
-                ),
-              ),
             if (overdue.isNotEmpty) ...[
               _SectionHeader(
                 title: l10n.overdue,
@@ -279,43 +269,6 @@ class _MonthPage extends ConsumerWidget {
     );
   }
 
-  /// Settling a whole round at once. Offered for any month with something
-  /// open — reconstructing a month the app missed and clearing a payday's
-  /// worth of bills are the same gesture — but what gets recorded differs,
-  /// so the confirmation says which it will be.
-  Future<void> _markAllPaid(
-    BuildContext context,
-    WidgetRef ref,
-    List<BillInstanceWithBill> unpaid,
-  ) async {
-    final l10n = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final now = DateTime.now();
-    final isCurrentRound = month.year == now.year && month.month == now.month;
-
-    final confirmed = await showConfirmDialog(
-      context,
-      icon: Icons.done_all,
-      title: l10n.markAllPaidDialogTitle,
-      message: isCurrentRound
-          ? l10n.markAllPaidCurrentMessage(unpaid.length)
-          : l10n.markAllPaidPastMessage(unpaid.length),
-      confirmLabel: l10n.markAllPaidConfirm,
-    );
-    if (confirmed != ConfirmDialogResult.confirmed) return;
-
-    final settled = await ref
-        .read(markMonthPaidProvider(month).notifier)
-        .settle(unpaid);
-    if (settled == null) {
-      messenger.showSnackBar(SnackBar(content: Text(l10n.genericErrorMessage)));
-      return;
-    }
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.markAllPaidDone(settled))),
-    );
-  }
-
   void _openMarkPaid(BuildContext context, BillInstanceWithBill entry) {
     showModalBottomSheet(
       context: context,
@@ -325,29 +278,6 @@ class _MonthPage extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => MarkPaidSheet(entry: entry),
-    );
-  }
-}
-
-class _MarkAllPaidButton extends StatelessWidget {
-  const _MarkAllPaidButton({required this.busy, required this.onPressed});
-
-  final bool busy;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return TextButton.icon(
-      onPressed: busy ? null : onPressed,
-      icon: busy
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.done_all, size: 18),
-      label: Text(l10n.markAllPaidAction),
     );
   }
 }

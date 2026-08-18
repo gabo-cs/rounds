@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:rounds/core/extensions/date_extensions.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
+import 'package:rounds/core/widgets/confirm_dialog.dart';
 import 'package:rounds/core/widgets/round_ring.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
+import 'package:rounds/features/round/providers/mark_month_paid_providers.dart';
 import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
@@ -113,6 +115,7 @@ class MonthNavigator extends ConsumerWidget {
                       visualDensity: VisualDensity.compact,
                       onPressed: () => select(selectedDt.nextMonth),
                     ),
+                    _RoundMenu(month: selected),
                   ],
                 ),
               ),
@@ -121,6 +124,87 @@ class MonthNavigator extends ConsumerWidget {
         ),
         _MonthSummary(month: selected),
       ],
+    );
+  }
+}
+
+/// Round-level actions, kept behind an overflow menu on purpose.
+///
+/// Settling a whole round at once is occasionally exactly right — a month the
+/// app missed, a payday cleared in one go — and a permanent button next to
+/// the bills would invite it as the normal way to use the app. Here it has to
+/// be reached for. The button hides itself when the round has nothing open,
+/// so the menu never opens with nothing in it.
+class _RoundMenu extends ConsumerWidget {
+  const _RoundMenu({required this.month});
+
+  final SelectedMonth month;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final instances = ref.watch(monthInstancesProvider(month)).valueOrNull;
+    final unpaid = [
+      for (final entry in instances ?? const <BillInstanceWithBill>[])
+        if (!entry.instance.isPaid) entry,
+    ];
+    if (unpaid.isEmpty) return const SizedBox.shrink();
+
+    return PopupMenuButton<void>(
+      icon: const Icon(Icons.more_vert),
+      tooltip: l10n.roundMenuTooltip,
+      position: PopupMenuPosition.under,
+      enabled: !ref.watch(markMonthPaidProvider(month)),
+      // Not the builder's context: onTap fires after this route pops.
+      itemBuilder: (_) => [
+        PopupMenuItem<void>(
+          onTap: () => _markAllPaid(context, ref, unpaid),
+          child: Row(
+            children: [
+              const Icon(Icons.done_all, size: 20),
+              const SizedBox(width: 12),
+              Flexible(child: Text(l10n.markAllPaidAction)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// What gets recorded differs between a round already past and the one
+  /// we're living in, so the confirmation says which it will be.
+  Future<void> _markAllPaid(
+    BuildContext context,
+    WidgetRef ref,
+    List<BillInstanceWithBill> unpaid,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final now = DateTime.now();
+    final isCurrentRound = month.year == now.year && month.month == now.month;
+
+    final confirmed = await showConfirmDialog(
+      context,
+      icon: Icons.done_all,
+      title: l10n.markAllPaidDialogTitle,
+      message: isCurrentRound
+          ? l10n.markAllPaidCurrentMessage(unpaid.length)
+          : l10n.markAllPaidPastMessage(unpaid.length),
+      confirmLabel: l10n.markAllPaidConfirm,
+    );
+    if (confirmed != ConfirmDialogResult.confirmed) return;
+
+    final settled = await ref
+        .read(markMonthPaidProvider(month).notifier)
+        .settle(unpaid);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          settled == null
+              ? l10n.genericErrorMessage
+              : l10n.markAllPaidDone(settled),
+        ),
+      ),
     );
   }
 }

@@ -95,6 +95,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get buildRoundButton => 'Build this round';
   @override
+  String get roundMenuTooltip => 'Round options';
+  @override
   String get markAllPaidAction => 'Mark all as paid';
   @override
   String get markAllPaidDialogTitle => 'Mark the round as paid?';

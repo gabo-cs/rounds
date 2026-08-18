@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
@@ -40,19 +43,27 @@ class MarkMonthPaidNotifier extends StateNotifier<bool> {
       await _repo.markManyPaid({
         for (final entry in unpaid) entry.instance.id: bulkPaidAt(entry, at),
       });
-      // A settled bill must stop nagging. The re-arm pass is no backstop
-      // here: it only clears slot 0, so the rest of the ladder would still
-      // fire for every bill in the round.
-      await NotificationService.instance.cancelForInstances([
-        for (final entry in unpaid) entry.instance.id,
-      ]);
-      return unpaid.length;
     } catch (e) {
       return null;
     } finally {
       // The month page can leave the PageView's cache window mid-write.
       if (mounted) state = false;
     }
+
+    // A settled bill must stop nagging, and the re-arm pass is no backstop:
+    // it only clears slot 0, so the rest of the ladder would still fire for
+    // every bill in the round.
+    //
+    // Deliberately not awaited. This is ten paced platform calls per bill —
+    // over a second for a full round — and the write is what the user is
+    // waiting on. Holding the confirmation behind the housekeeping is what
+    // made the whole action feel slow.
+    unawaited(
+      NotificationService.instance
+          .cancelForInstances([for (final entry in unpaid) entry.instance.id])
+          .catchError((Object e) => debugPrint('Cancel after settle: \$e')),
+    );
+    return unpaid.length;
   }
 }
 
