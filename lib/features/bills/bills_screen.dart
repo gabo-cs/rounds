@@ -7,8 +7,8 @@ import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/core/widgets/empty_state.dart';
 import 'package:rounds/core/widgets/screen_header.dart';
 import 'package:rounds/data/database/app_database.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/round/providers/round_providers.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class BillsScreen extends ConsumerWidget {
@@ -220,9 +220,7 @@ class _BillRow extends ConsumerWidget {
               if (bill.amount != null) ...[
                 const SizedBox(width: 12),
                 Text(
-                  ref
-                      .watch(settingsProvider.select((s) => s.currency))
-                      .format(bill.amount!),
+                  kAppCurrency.format(bill.amount!),
                   style: AppTypography.money.copyWith(
                     fontSize: 13,
                     color: isArchived

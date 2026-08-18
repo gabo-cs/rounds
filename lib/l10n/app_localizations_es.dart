@@ -344,32 +344,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Rounds funciona sin conexión, así que ese archivo es tu única copia. '
       'Expórtalo cada pocos meses y guárdalo donde no lo pierdas.';
   @override
-  String get currencyInfoTooltip => 'Sobre la moneda';
-  @override
-  String get currencyInfoTitle => 'Sobre la moneda';
-  @override
-  String get currencyInfoIntro =>
-      'Define cómo se escriben los montos: el símbolo y los separadores. '
-      'Eso es todo lo que hace.';
-  @override
-  String get currencyInfoDisplayTitle => 'Solo apariencia';
-  @override
-  String get currencyInfoDisplayBody =>
-      'Los montos se guardan como números simples. Cambiar de moneda cambia '
-      'cómo se leen — 1,500 o 1.500 — nunca los números en sí, así que nada '
-      'de tu historial se reescribe.';
-  @override
-  String get currencyInfoNoRatesTitle => 'No convierte ni usa tasas';
-  @override
-  String get currencyInfoNoRatesBody =>
-      'Rounds funciona sin conexión y no conoce tasas de cambio: 1.500 sigue '
-      'siendo 1.500 con cualquier moneda que elijas. Es una sola elección '
-      'para toda la app — una factura no puede tener su propia moneda.';
-  @override
-  String get currencyInfoTip =>
-      'Cada opción de la lista muestra cómo se verán tus montos. Elige la '
-      'que coincida con la forma en que los escribes.';
-  @override
   String get infoSheetDismiss => 'Entendido';
   @override
   String get aboutSection => 'Acerca de';
@@ -552,9 +526,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get englishLanguage => 'Inglés';
   @override
   String get spanishLanguage => 'Español';
-
-  @override
-  String get currencySection => 'Moneda';
 
   @override
   String get testNotificationTitle => 'Enviar notificación de prueba';

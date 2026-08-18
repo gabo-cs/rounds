@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/data/database/app_database.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/models/payment_method.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/mark_paid/mark_paid_sheet.dart';
@@ -124,8 +124,6 @@ class _BillInfoCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
-
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Padding(
@@ -138,7 +136,7 @@ class _BillInfoCard extends ConsumerWidget {
                 if (bill.amount != null)
                   Expanded(
                     child: Text(
-                      currency.format(bill.amount!),
+                      kAppCurrency.format(bill.amount!),
                       style: AppTypography.money.copyWith(
                         fontSize: 26,
                         color: cs.primary,
@@ -219,7 +217,6 @@ class _InstanceRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     final instance = entry.instance;
     final isPaid = instance.isPaid;
 
@@ -267,7 +264,7 @@ class _InstanceRow extends ConsumerWidget {
             const SizedBox(width: 12),
             if (isPaid && instance.amountPaid != null)
               Text(
-                currency.format(instance.amountPaid!),
+                kAppCurrency.format(instance.amountPaid!),
                 style: AppTypography.money.copyWith(
                   fontSize: 13,
                   color: rounds.textSecondary,

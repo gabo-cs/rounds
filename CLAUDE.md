@@ -453,8 +453,16 @@ Round-trip and error paths are covered in `test/backup_service_test.dart`.
   parsing, and `CurrencyInputFormatter` groups digits live as they are typed.
   Grouping comes from the locale pattern but the symbol is prefixed by hand —
   `es_CO` formats currency as `1.000.000 $`, which nobody writes. Decimals show
-  only when the amount has them. Anything that renders or reads an amount takes
-  the currency from `settingsProvider`; nothing formats money inline.
+  only when the amount has them. Anything that renders or reads an amount goes
+  through `kAppCurrency`; nothing formats money inline.
+- **There is one currency, and it isn't a setting.** `kAppCurrency` pins the
+  whole app to `Currency.cop` — dot grouping, comma decimals, `$` prefixed.
+  Picking one *was* a setting; it and its explainer sheet were removed once it
+  turned out nobody needed the choice. The enum keeps all its values on
+  purpose, so bringing the choice back is a matter of restoring the
+  `AppSettings` field and pointing the call sites at it again. Per-bill
+  currencies were built and then dropped for the same reason — if they come
+  back, the deleted work is the branch reachable from `ccbda4c` in the reflog.
 - **Version lives in two places**: `version:` in `pubspec.yaml` and the hardcoded
   `appVersionLabel` in both l10n implementations. Bump them together, always.
 

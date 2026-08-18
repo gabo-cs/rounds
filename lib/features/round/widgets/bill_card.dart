@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 /// Card for a bill that still needs attention. The due date leads the right
@@ -109,9 +109,8 @@ class _AmountText extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     return Text(
-      currency.format(amount),
+      kAppCurrency.format(amount),
       style: AppTypography.money.copyWith(
         fontSize: 13,
         color: RoundsColors.of(context).textSecondary,
@@ -139,13 +138,11 @@ class PaidBillRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final rounds = RoundsColors.of(context);
     final l10n = AppLocalizations.of(context);
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
-
     final amount = entry.instance.amountPaid ?? entry.bill.amount;
     final paidAt = entry.instance.paidAt;
     // Amount when known; otherwise the payment date keeps the row honest.
     final trailing = amount != null
-        ? currency.format(amount)
+        ? kAppCurrency.format(amount)
         : paidAt != null
             ? l10n.paidOnDate(paidAt)
             : l10n.paid;

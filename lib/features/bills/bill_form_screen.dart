@@ -11,7 +11,6 @@ import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/features/bills/providers/bills_providers.dart';
 import 'package:rounds/features/round/providers/round_providers.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class BillFormScreen extends ConsumerStatefulWidget {
@@ -37,7 +36,6 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
 
   bool get _isEditing => widget.billId != null;
 
-  Currency get _currency => ref.read(settingsProvider).currency;
 
   @override
   void dispose() {
@@ -51,7 +49,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   void _populateFromBill(Bill bill) {
     _nameController.text = bill.name;
     _amountController.text =
-        bill.amount != null ? _currency.formatBare(bill.amount!) : '';
+        bill.amount != null ? kAppCurrency.formatBare(bill.amount!) : '';
     _notesController.text = bill.notes ?? '';
     _dueDayOfMonth = bill.dueDayOfMonth;
 
@@ -72,7 +70,7 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
     setState(() => _isSaving = true);
 
     final name = _nameController.text.trim();
-    final amount = _currency.parse(_amountController.text);
+    final amount = kAppCurrency.parse(_amountController.text);
     final notes =
         _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
     String? category;
@@ -225,7 +223,6 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   Widget _buildForm(Bill? existingBill) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
     final isArchived = existingBill?.isArchived ?? false;
 
     return Scaffold(
@@ -306,15 +303,15 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
                 fontWeight: FontWeight.w500,
               ),
               decoration: InputDecoration(
-                prefixText: '${currency.symbol} ',
+                prefixText: '${kAppCurrency.symbol} ',
                 hintText: l10n.amountHint,
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [CurrencyInputFormatter(currency)],
+              inputFormatters: [CurrencyInputFormatter(kAppCurrency)],
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                final parsed = currency.parse(v);
+                final parsed = kAppCurrency.parse(v);
                 if (parsed == null || parsed <= 0) {
                   return l10n.amountInvalid;
                 }

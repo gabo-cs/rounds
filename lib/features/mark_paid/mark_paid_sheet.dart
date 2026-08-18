@@ -5,10 +5,10 @@ import 'package:rounds/core/theme/rounds_colors.dart';
 import 'package:rounds/core/utils/currency_input_formatter.dart';
 import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/core/widgets/confirm_dialog.dart';
+import 'package:rounds/data/models/currency.dart';
 import 'package:rounds/data/models/payment_method.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/mark_paid/providers/mark_paid_providers.dart';
-import 'package:rounds/features/settings/providers/settings_providers.dart';
 import 'package:rounds/l10n/app_localizations.dart';
 
 class MarkPaidSheet extends ConsumerStatefulWidget {
@@ -36,7 +36,7 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
     );
     _amountController = TextEditingController(
       text: initialAmount != null
-          ? ref.read(settingsProvider).currency.formatBare(initialAmount)
+          ? kAppCurrency.formatBare(initialAmount)
           : '',
     );
 
@@ -69,7 +69,6 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
-    final currency = ref.watch(settingsProvider.select((s) => s.currency));
 
     return Padding(
       padding: EdgeInsets.only(
@@ -166,13 +165,13 @@ class _MarkPaidSheetState extends ConsumerState<MarkPaidSheet> {
                     fontWeight: FontWeight.w500,
                   ),
                   decoration: InputDecoration(
-                    prefixText: '${currency.symbol} ',
+                    prefixText: '${kAppCurrency.symbol} ',
                     hintText: l10n.amountPaidHint,
                   ),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [CurrencyInputFormatter(currency)],
-                  onChanged: (v) => notifier.setAmountPaid(currency.parse(v)),
+                  inputFormatters: [CurrencyInputFormatter(kAppCurrency)],
+                  onChanged: (v) => notifier.setAmountPaid(kAppCurrency.parse(v)),
                 ),
                 const SizedBox(height: 16),
 

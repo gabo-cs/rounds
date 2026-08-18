@@ -1,5 +1,13 @@
 import 'package:intl/intl.dart';
 
+/// The single currency the app formats in.
+///
+/// Choosing one was a setting until it turned out nobody needed it. The enum
+/// is kept whole so the choice can come back by pointing the call sites at a
+/// setting again — the formatting, separators and parsing all still work per
+/// currency; only the picker is gone.
+const kAppCurrency = Currency.cop;
+
 /// The currency amounts are entered and displayed in.
 ///
 /// Only the symbol and the punctuation really differ — but that punctuation

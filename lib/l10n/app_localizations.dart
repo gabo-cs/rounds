@@ -215,16 +215,6 @@ abstract class AppLocalizations {
   String get backupInfoImportBody;
   String get backupInfoTip;
 
-  /// The (?) beside the Currency section header, and the sheet it opens.
-  String get currencyInfoTooltip;
-  String get currencyInfoTitle;
-  String get currencyInfoIntro;
-  String get currencyInfoDisplayTitle;
-  String get currencyInfoDisplayBody;
-  String get currencyInfoNoRatesTitle;
-  String get currencyInfoNoRatesBody;
-  String get currencyInfoTip;
-
   /// Dismisses any of the Settings explainer sheets.
   String get infoSheetDismiss;
   String get aboutSection;
@@ -300,7 +290,6 @@ abstract class AppLocalizations {
   String get languageSection;
   String get englishLanguage;
   String get spanishLanguage;
-  String get currencySection;
   String get testNotificationTitle;
   String get testNotificationSubtitle;
   String get noBillsThisMonth;

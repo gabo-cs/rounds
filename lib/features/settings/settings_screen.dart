@@ -103,50 +103,6 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
 
-                  // CURRENCY
-                  _SectionLabel(
-                    label: l10n.currencySection,
-                    action: _SectionInfoButton(
-                      tooltip: l10n.currencyInfoTooltip,
-                      sheet: _currencyInfoSheet(l10n),
-                    ),
-                  ),
-                  _SettingsCard(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        // ISO codes need no translation, and what the choice
-                        // actually changes is the symbol and the separators —
-                        // so that's what each option shows. The specimen
-                        // carries cents so both separators are visible at
-                        // once, and so it reads as a sample rather than as
-                        // an amount somebody set.
-                        child: DropdownButtonFormField<Currency>(
-                          initialValue: settings.currency,
-                          decoration: const InputDecoration(),
-                          items: [
-                            for (final currency in Currency.values)
-                              DropdownMenuItem(
-                                value: currency,
-                                child: Text(
-                                  '${currency.code} · '
-                                  '${currency.format(1234.56)}',
-                                ),
-                              ),
-                          ],
-                          onChanged: (currency) {
-                            if (currency != null) {
-                              notifier.setCurrency(currency);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
                   // NOTIFICATIONS
                   _SectionLabel(label: l10n.notificationsSection),
                   _SettingsCard(
@@ -187,7 +143,7 @@ class SettingsScreen extends ConsumerWidget {
                                 languageCode: ref
                                     .read(settingsProvider)
                                     .languageCode,
-                                currency: ref.read(settingsProvider).currency,
+                                currency: kAppCurrency,
                               );
                             }
                           },
@@ -231,7 +187,7 @@ class SettingsScreen extends ConsumerWidget {
                                   .scheduleTestNotification(
                                     last,
                                     languageCode: current.languageCode,
-                                    currency: current.currency,
+                                    currency: kAppCurrency,
                                   );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -392,7 +348,7 @@ class SettingsScreen extends ConsumerWidget {
           billsRepo: ref.read(billsRepositoryProvider),
           instancesRepo: repo,
           languageCode: settings.languageCode,
-          currency: settings.currency,
+          currency: kAppCurrency,
         );
       }
     } catch (e, st) {
@@ -534,24 +490,6 @@ _InfoSheet _backupInfoSheet(AppLocalizations l10n) => _InfoSheet(
       icon: Icons.swap_horiz,
       title: l10n.backupInfoImportTitle,
       body: l10n.backupInfoImportBody,
-    ),
-  ],
-);
-
-_InfoSheet _currencyInfoSheet(AppLocalizations l10n) => _InfoSheet(
-  title: l10n.currencyInfoTitle,
-  intro: l10n.currencyInfoIntro,
-  tip: l10n.currencyInfoTip,
-  points: [
-    _InfoPoint(
-      icon: Icons.visibility_outlined,
-      title: l10n.currencyInfoDisplayTitle,
-      body: l10n.currencyInfoDisplayBody,
-    ),
-    _InfoPoint(
-      icon: Icons.currency_exchange,
-      title: l10n.currencyInfoNoRatesTitle,
-      body: l10n.currencyInfoNoRatesBody,
     ),
   ],
 );

@@ -134,6 +134,6 @@ final markPaidProvider = StateNotifierProvider.family
     entry,
     settings.languageCode,
     settings.notificationsEnabled,
-    settings.currency,
+    kAppCurrency,
   );
 });
