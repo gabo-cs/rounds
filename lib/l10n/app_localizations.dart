@@ -69,6 +69,13 @@ abstract class AppLocalizations {
   String get noBillsYet;
   String get addFirstBill;
   String get addFirstBillHomeSubtitle;
+
+  /// A past month with nothing in it: instances are only generated from the
+  /// current month forward, so months the app was never opened for stay
+  /// blank until the user asks for them.
+  String get noRoundRecordedTitle;
+  String get noRoundRecordedSubtitle;
+  String get buildRoundButton;
   String get todayButton;
   String get previousMonthTooltip;
   String get nextMonthTooltip;

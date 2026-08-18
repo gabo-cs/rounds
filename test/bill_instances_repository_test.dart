@@ -28,6 +28,57 @@ void main() {
     );
   }
 
+  group('ensureInstancesExist', () {
+    // The gap an import leaves behind: a backup ending in May, restored in
+    // August, has no rows for June or July and nothing that would ever
+    // generate them — generation only runs from the current month forward.
+    // The Round screen offers to build such a month, which is this call.
+    test('builds a past month, leaving what was recorded untouched', () async {
+      final rentId = await createBill('Rent', dueDay: 1);
+      final schoolId = await createBill('School fees', dueDay: 10);
+      final may = await instanceFor(rentId, 2026, 5);
+      await instancesRepo.markPaid(
+        instanceId: may.id,
+        paidAt: DateTime(2026, 5, 2),
+      );
+
+      await instancesRepo.ensureInstancesExist(
+        await instancesRepo.getAllBills(),
+        2026,
+        6,
+      );
+
+      final all = await instancesRepo.getAllInstances();
+      final june = all.where((i) => i.year == 2026 && i.month == 6);
+      expect(june.map((i) => i.billId), unorderedEquals([rentId, schoolId]));
+      expect(june.every((i) => !i.isPaid), isTrue);
+      expect(all.firstWhere((i) => i.id == may.id).isPaid, isTrue);
+    });
+
+    test('adds only the bills a month is missing', () async {
+      final rentId = await createBill('Rent');
+      await instanceFor(rentId, 2026, 6);
+      final schoolId = await createBill('School fees');
+
+      await instancesRepo.ensureInstancesExist(
+        await instancesRepo.getAllBills(),
+        2026,
+        6,
+      );
+      // Twice: the button is tappable again while the stream catches up.
+      await instancesRepo.ensureInstancesExist(
+        await instancesRepo.getAllBills(),
+        2026,
+        6,
+      );
+
+      final june = (await instancesRepo.getAllInstances())
+          .where((i) => i.year == 2026 && i.month == 6)
+          .toList();
+      expect(june.map((i) => i.billId), unorderedEquals([rentId, schoolId]));
+    });
+  });
+
   group('getUnpaidInstancesForMonth', () {
     test('returns only that month, unpaid, non-archived', () async {
       final billId = await createBill('Internet');
@@ -41,7 +92,10 @@ void main() {
       final result = await instancesRepo.getUnpaidInstancesForMonth(2026, 6);
 
       expect(result.map((e) => e.instance.id), [june.id]);
-      expect(result.map((e) => e.instance.id), isNot(contains(archivedJune.id)));
+      expect(
+        result.map((e) => e.instance.id),
+        isNot(contains(archivedJune.id)),
+      );
     });
 
     test('excludes paid instances', () async {
@@ -57,20 +111,25 @@ void main() {
   });
 
   group('getUnpaidInstancesBefore', () {
-    test('returns only unpaid instances from strictly earlier months',
-        () async {
-      final billId = await createBill('Internet');
-      final may = await instanceFor(billId, 2026, 5);
-      final june = await instanceFor(billId, 2026, 6);
-      final july = await instanceFor(billId, 2026, 7);
+    test(
+      'returns only unpaid instances from strictly earlier months',
+      () async {
+        final billId = await createBill('Internet');
+        final may = await instanceFor(billId, 2026, 5);
+        final june = await instanceFor(billId, 2026, 6);
+        final july = await instanceFor(billId, 2026, 7);
 
-      final lingering = await instancesRepo.getUnpaidInstancesBefore(2026, 7);
+        final lingering = await instancesRepo.getUnpaidInstancesBefore(2026, 7);
 
-      final ids = lingering.map((e) => e.instance.id).toList();
-      expect(ids, containsAll([may.id, june.id]));
-      expect(ids, isNot(contains(july.id)),
-          reason: 'the current month is handled by the sliding window');
-    });
+        final ids = lingering.map((e) => e.instance.id).toList();
+        expect(ids, containsAll([may.id, june.id]));
+        expect(
+          ids,
+          isNot(contains(july.id)),
+          reason: 'the current month is handled by the sliding window',
+        );
+      },
+    );
 
     test('year boundary: December counts as before January', () async {
       final billId = await createBill('Rent');

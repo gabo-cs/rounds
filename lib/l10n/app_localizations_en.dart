@@ -87,6 +87,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addFirstBillHomeSubtitle =>
       'Add your recurring bills to start tracking your monthly payments.';
   @override
+  String get noRoundRecordedTitle => 'No round recorded';
+  @override
+  String get noRoundRecordedSubtitle =>
+      'Rounds only keeps the months it was open for. You can build this one '
+      'from your bills as they stand today, then mark what you paid.';
+  @override
+  String get buildRoundButton => 'Build this round';
+  @override
   String get todayButton => 'Today';
   @override
   String get previousMonthTooltip => 'Previous month';

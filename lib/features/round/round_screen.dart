@@ -99,6 +99,60 @@ class _RoundScreenState extends ConsumerState<RoundScreen> {
 
 /// One month's bill list. Each page owns its [monthInstancesProvider] instance,
 /// so the PageView keeps neighbouring months alive and pre-built.
+/// An empty month means one of two things, and they need different offers.
+///
+/// Instances are only generated from the current month forward, so a past
+/// month is blank whenever the app went unopened through it — or whenever an
+/// imported backup ends before it. Nothing generates those rows later, so the
+/// month would stay blank forever while claiming there are no bills at all.
+/// Building it is offered rather than done automatically: the rows arrive
+/// unpaid, and inventing a stack of overdue bills nobody asked for is worse
+/// than an honest gap.
+class _EmptyMonth extends ConsumerWidget {
+  const _EmptyMonth({required this.month});
+
+  final SelectedMonth month;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final activeBills = ref.watch(activeBillsProvider).valueOrNull;
+    final now = DateTime.now();
+    final isPast = DateTime(
+      month.year,
+      month.month,
+    ).isBefore(DateTime(now.year, now.month));
+
+    if (isPast && activeBills != null && activeBills.isNotEmpty) {
+      return EmptyState(
+        icon: Icons.history_toggle_off,
+        title: l10n.noRoundRecordedTitle,
+        subtitle: l10n.noRoundRecordedSubtitle,
+        action: FilledButton.icon(
+          // No reminder scheduling here, as with every other generation path:
+          // the schedule is device-month based and owned by the re-arm pass.
+          onPressed: () => ref
+              .read(billInstancesRepositoryProvider)
+              .ensureInstancesExist(activeBills, month.year, month.month),
+          icon: const Icon(Icons.event_repeat),
+          label: Text(l10n.buildRoundButton),
+        ),
+      );
+    }
+
+    return EmptyState(
+      icon: Icons.receipt_long_outlined,
+      title: l10n.noBillsYet,
+      subtitle: l10n.addFirstBillHomeSubtitle,
+      action: FilledButton.icon(
+        onPressed: () => context.push('/bills/new'),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.addFirstBill),
+      ),
+    );
+  }
+}
+
 class _MonthPage extends ConsumerWidget {
   const _MonthPage({required this.month});
 
@@ -118,25 +172,16 @@ class _MonthPage extends ConsumerWidget {
             l10n.genericErrorMessage,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withValues(
-                    alpha: 0.6,
-                  ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ),
       ),
       data: (instances) {
         if (instances.isEmpty) {
-          return EmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: l10n.noBillsYet,
-            subtitle: l10n.addFirstBillHomeSubtitle,
-            action: FilledButton.icon(
-              onPressed: () => context.push('/bills/new'),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addFirstBill),
-            ),
-          );
+          return _EmptyMonth(month: month);
         }
 
         final now = DateTime.now();
@@ -258,10 +303,7 @@ class _SectionHeader extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
           Text(
@@ -278,4 +320,3 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-

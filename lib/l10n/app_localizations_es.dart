@@ -69,6 +69,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addFirstBillHomeSubtitle =>
       'Agrega tus facturas recurrentes para comenzar a rastrear tus pagos mensuales.';
   @override
+  String get noRoundRecordedTitle => 'Sin ronda registrada';
+  @override
+  String get noRoundRecordedSubtitle =>
+      'Rounds solo guarda los meses en los que estuvo abierta. Puedes armar '
+      'esta con tus facturas tal como están hoy y luego marcar lo que pagaste.';
+  @override
+  String get buildRoundButton => 'Armar esta ronda';
+  @override
   String get todayButton => 'Hoy';
   @override
   String get previousMonthTooltip => 'Mes anterior';
