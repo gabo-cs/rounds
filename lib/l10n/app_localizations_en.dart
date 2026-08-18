@@ -379,8 +379,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'single bill can\'t have a currency of its own.';
   @override
   String get currencyInfoTip =>
-      'The sample beside each code is exactly how your amounts will read. '
-      'Pick the one that looks the way you write them.';
+      'Each choice in the list shows how your amounts will look. Pick the '
+      'one that matches the way you write them.';
   @override
   String get infoSheetDismiss => 'Got it';
   @override

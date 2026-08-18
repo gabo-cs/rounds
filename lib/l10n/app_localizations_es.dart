@@ -367,8 +367,8 @@ class AppLocalizationsEs extends AppLocalizations {
       'para toda la app — una factura no puede tener su propia moneda.';
   @override
   String get currencyInfoTip =>
-      'La muestra junto a cada código es exactamente cómo se verán tus '
-      'montos. Elige la que se parezca a como los escribes.';
+      'Cada opción de la lista muestra cómo se verán tus montos. Elige la '
+      'que coincida con la forma en que los escribes.';
   @override
   String get infoSheetDismiss => 'Entendido';
   @override
