@@ -496,7 +496,7 @@ Future<void> _handleSnoozeInBackground(NotificationResponse response) async {
     body,
     snoozeTime,
     isOverdue ? _overdueDetails(l10n) : _reminderDetails(l10n),
-    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    androidScheduleMode: await _resolveScheduleMode(plugin),
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
     payload: jsonEncode(data),
@@ -511,6 +511,27 @@ tz.TZDateTime? _computeSnoozeTime(String actionId) {
     _kActionSnooze180 => now.add(const Duration(hours: 3)),
     _ => null,
   };
+}
+
+/// Exact vs. inexact alarm mode, decided by what the OS currently allows.
+///
+/// Android 14+ stops pre-granting SCHEDULE_EXACT_ALARM to apps targeting 33+,
+/// and `zonedSchedule` *throws* when an exact alarm is requested without it —
+/// which, in a blind sequential pass, means the first reminder takes every
+/// later one down with it. A reminder at 9:00 is a convenience, not a
+/// deadline, so a denied permission degrades to an inexact alarm (Android
+/// fires it in a nearby window) instead of leaving the user with nothing.
+/// Settings still offers the grant to restore precise timing.
+Future<AndroidScheduleMode> _resolveScheduleMode(
+  FlutterLocalNotificationsPlugin plugin,
+) async {
+  final android = plugin.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>();
+  if (android == null) return AndroidScheduleMode.exactAllowWhileIdle;
+  final canSchedule = await android.canScheduleExactNotifications() ?? false;
+  return canSchedule
+      ? AndroidScheduleMode.exactAllowWhileIdle
+      : AndroidScheduleMode.inexactAllowWhileIdle;
 }
 
 // ── Service ──────────────────────────────────────────────────────────────────
@@ -664,6 +685,8 @@ class NotificationService {
   Future<void> applyReminderPlans(Iterable<ReminderPlan> plans) async {
     if (!await _ready()) return;
 
+    final mode = await _resolveScheduleMode(_plugin);
+
     var issued = 0;
     Future<void> pace() async {
       if (issued++ > 0) {
@@ -678,12 +701,15 @@ class NotificationService {
       }
       for (final notification in plan.arm) {
         await pace();
-        await _schedule(notification);
+        await _schedule(notification, mode: mode);
       }
     }
   }
 
-  Future<void> _schedule(PlannedNotification notification) async {
+  Future<void> _schedule(
+    PlannedNotification notification, {
+    AndroidScheduleMode? mode,
+  }) async {
     final fireAt = tz.TZDateTime(
       tz.local,
       notification.fireAt.year,
@@ -698,7 +724,7 @@ class NotificationService {
       notification.body,
       fireAt,
       notification._details(),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: mode ?? await _resolveScheduleMode(_plugin),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: notification._matchComponents,
@@ -762,7 +788,7 @@ class NotificationService {
       body,
       scheduledDate,
       _reminderDetails(l10n, importance: Importance.high, priority: Priority.high),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: await _resolveScheduleMode(_plugin),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
@@ -816,7 +842,7 @@ class NotificationService {
       body,
       snoozeTime,
       isOverdue ? _overdueDetails(l10n) : _reminderDetails(l10n),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: await _resolveScheduleMode(_plugin),
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: isRepeating ? DateTimeComponents.time : null,

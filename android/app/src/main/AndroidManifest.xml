@@ -1,9 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Notification permission for Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- Required for exact alarms (notification scheduling) -->
+    <!-- Exact alarms for notification scheduling. USE_EXACT_ALARM is
+         deliberately absent: it is auto-granted but Play restricts it to apps
+         whose core function needs precise timing (alarm clocks, timers,
+         calendars), which a 9:00 bill reminder is not. So the app asks for
+         SCHEDULE_EXACT_ALARM instead, and degrades to an inexact alarm when
+         it is denied (see NotificationService). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <!-- A reboot clears AlarmManager system-wide; the plugin's boot receiver
          re-arms the schedule, but it never receives BOOT_COMPLETED without
          this permission (the plugin's manifest does not bring it in). Without

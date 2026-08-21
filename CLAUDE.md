@@ -345,8 +345,21 @@ All logic in `core/utils/notification_service.dart` (singleton,
   re-resolves it with `NSTimeZone` against Apple's database. A synthetic
   `tz.Location` therefore works on Android and breaks on iOS — the fallback has
   to be a name both databases know, which is why it's `Etc/GMT±N`.
-- `zonedSchedule` with `exactAllowWhileIdle` everywhere; exact-alarm permission
-  is requested from Settings.
+- **Exact alarms are best-effort, never assumed.** Every `zonedSchedule` call
+  takes its mode from `_resolveScheduleMode`, which asks
+  `canScheduleExactNotifications()` and falls back to `inexactAllowWhileIdle`.
+  This is load-bearing: `targetSdk` is 36, Android 14+ stops pre-granting
+  `SCHEDULE_EXACT_ALARM` to apps targeting 33+, and the plugin *throws* when an
+  exact alarm is requested without it — in the blind sequential re-arm pass the
+  first reminder would take every later one down with it, silently. The
+  permission is requested from onboarding, Settings and the FAQ; a denied grant
+  costs precision (Android fires in a nearby window), not the reminder.
+  `applyReminderPlans` resolves the mode once per pass rather than per
+  notification, since the pass is already careful about platform-call volume.
+  **`USE_EXACT_ALARM` is deliberately not in the manifest** — it is auto-granted
+  and would make all of this moot, but Play restricts it to apps whose core
+  function needs precise timing (alarm clocks, timers, calendars), and a 9:00
+  bill reminder does not qualify. Don't re-add it to "fix" inexact reminders.
 
 ## Localization
 
