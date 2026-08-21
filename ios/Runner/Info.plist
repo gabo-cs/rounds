@@ -6,6 +6,11 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- The app is fully offline and ships no encryption of its own, so every
+	     App Store Connect upload would otherwise stop to ask the same export
+	     compliance question. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleDisplayName</key>
 	<string>Rounds</string>
 	<key>CFBundleExecutable</key>
