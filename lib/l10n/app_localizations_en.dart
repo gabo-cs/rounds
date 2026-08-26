@@ -528,6 +528,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get englishLanguage => 'English';
   @override
   String get spanishLanguage => 'Spanish';
+  @override
+  String get languageCaption =>
+      'Translates what the app itself says. Bill names, notes and payment '
+      'references are your own records, and stay exactly as you wrote them.';
 
   @override
   String get testNotificationTitle => 'Send test notification';

@@ -526,6 +526,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get englishLanguage => 'Inglés';
   @override
   String get spanishLanguage => 'Español';
+  @override
+  String get languageCaption =>
+      'Traduce lo que dice la app. Los nombres, las notas y las referencias '
+      'de pago de tus facturas son tus propios registros y quedan tal como '
+      'los escribiste.';
 
   @override
   String get testNotificationTitle => 'Enviar notificación de prueba';

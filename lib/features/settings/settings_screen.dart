@@ -79,25 +79,41 @@ class SettingsScreen extends ConsumerWidget {
                           horizontal: 16,
                           vertical: 14,
                         ),
-                        child: SegmentedButton<String>(
-                          segments: [
-                            ButtonSegment(
-                              value: 'en',
-                              label: Text(l10n.englishLanguage),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SegmentedButton<String>(
+                              segments: [
+                                ButtonSegment(
+                                  value: 'en',
+                                  label: Text(l10n.englishLanguage),
+                                ),
+                                ButtonSegment(
+                                  value: 'es',
+                                  label: Text(l10n.spanishLanguage),
+                                ),
+                              ],
+                              selected: {settings.languageCode},
+                              onSelectionChanged: (selected) {
+                                notifier.setLanguageCode(selected.first);
+                              },
+                              style: const ButtonStyle(
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              expandedInsets: EdgeInsets.zero,
                             ),
-                            ButtonSegment(
-                              value: 'es',
-                              label: Text(l10n.spanishLanguage),
+                            const SizedBox(height: 10),
+                            Text(
+                              l10n.languageCaption,
+                              style: Theme.of(context).textTheme.bodySmall!
+                                  .copyWith(
+                                    color: RoundsColors.of(
+                                      context,
+                                    ).textSecondary,
+                                    height: 1.35,
+                                  ),
                             ),
                           ],
-                          selected: {settings.languageCode},
-                          onSelectionChanged: (selected) {
-                            notifier.setLanguageCode(selected.first);
-                          },
-                          style: const ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          expandedInsets: EdgeInsets.zero,
                         ),
                       ),
                     ],

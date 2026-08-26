@@ -290,6 +290,7 @@ abstract class AppLocalizations {
   String get languageSection;
   String get englishLanguage;
   String get spanishLanguage;
+  String get languageCaption;
   String get testNotificationTitle;
   String get testNotificationSubtitle;
   String get noBillsThisMonth;
