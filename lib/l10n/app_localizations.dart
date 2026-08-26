@@ -236,6 +236,8 @@ abstract class AppLocalizations {
   String get faqAWhatIsRound;
   String get faqQOffline;
   String get faqAOffline;
+  String get faqQLanguage;
+  String get faqALanguage;
   String get faqQHowReminders;
   String get faqAHowReminders;
   String get faqQNoReminders;
@@ -290,7 +292,6 @@ abstract class AppLocalizations {
   String get languageSection;
   String get englishLanguage;
   String get spanishLanguage;
-  String get languageCaption;
   String get testNotificationTitle;
   String get testNotificationSubtitle;
   String get noBillsThisMonth;

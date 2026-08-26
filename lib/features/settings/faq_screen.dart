@@ -24,6 +24,10 @@ class FaqScreen extends StatelessWidget {
           _SectionLabel(label: l10n.faqSectionBasics),
           _FaqCard(question: l10n.faqQWhatIsRound, answer: l10n.faqAWhatIsRound),
           _FaqCard(question: l10n.faqQOffline, answer: l10n.faqAOffline),
+          _FaqCard(
+            question: l10n.faqQLanguage,
+            answer: l10n.faqALanguage,
+          ),
           _SectionLabel(label: l10n.faqSectionReminders),
           _FaqCard(
             question: l10n.faqQHowReminders,

@@ -381,6 +381,17 @@ class AppLocalizationsEs extends AppLocalizations {
       'y sin rastreo. Todo vive en una base de datos en este teléfono y nada '
       'sale de aquí a menos que tú mismo lo exportes.';
   @override
+  String get faqQLanguage => '¿Qué cambia al cambiar el idioma?';
+  @override
+  String get faqALanguage =>
+      'El texto que usa la app: etiquetas, botones, notificaciones y esta '
+      'página. Lo que tú escribiste no se toca: los nombres, las notas y las '
+      'referencias de pago de tus facturas son tus registros, no texto de la '
+      'app, así que Rounds nunca los reescribe. Cambiar de idioma es seguro '
+      'en cualquier momento y no altera ningún dato. Los recordatorios ya '
+      'entregados al teléfono conservan el texto anterior hasta que la app '
+      'los actualice, la próxima vez que salgas de ella.';
+  @override
   String get faqQHowReminders => '¿Cómo funcionan los recordatorios?';
   @override
   String get faqAHowReminders =>
@@ -526,11 +537,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get englishLanguage => 'Inglés';
   @override
   String get spanishLanguage => 'Español';
-  @override
-  String get languageCaption =>
-      'Traduce lo que dice la app. Los nombres, las notas y las referencias '
-      'de pago de tus facturas son tus propios registros y quedan tal como '
-      'los escribiste.';
 
   @override
   String get testNotificationTitle => 'Enviar notificación de prueba';

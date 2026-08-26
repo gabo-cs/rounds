@@ -392,6 +392,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Everything lives in a database on this phone, and nothing ever leaves '
       'it unless you export it yourself.';
   @override
+  String get faqQLanguage => 'What does changing the language change?';
+  @override
+  String get faqALanguage =>
+      'The wording the app itself uses — labels, buttons, notifications, this '
+      'page. What you typed is left alone: bill names, notes and payment '
+      'references are your records, not app text, so Rounds never rewrites '
+      'them. Switching is safe at any time and changes no data. Reminders '
+      'already handed to your phone keep their old wording until the app '
+      'refreshes them, the next time you leave it.';
+  @override
   String get faqQHowReminders => 'How do reminders work?';
   @override
   String get faqAHowReminders =>
@@ -528,10 +538,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get englishLanguage => 'English';
   @override
   String get spanishLanguage => 'Spanish';
-  @override
-  String get languageCaption =>
-      'Translates what the app itself says. Bill names, notes and payment '
-      'references are your own records, and stay exactly as you wrote them.';
 
   @override
   String get testNotificationTitle => 'Send test notification';
