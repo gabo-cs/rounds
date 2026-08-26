@@ -433,10 +433,9 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-/// The "?" that rides beside a Settings section header. Two sections hand
-/// the user something they can reasonably misread — a file format, and a
-/// setting that looks like it might convert money — so each carries its own
-/// explainer instead of relying on the FAQ.
+/// The "?" that rides beside a Settings section header. Backup hands the user
+/// something they can reasonably misread — a file format — so the section
+/// carries its own explainer instead of relying on the FAQ.
 class _SectionInfoButton extends StatelessWidget {
   const _SectionInfoButton({required this.tooltip, required this.sheet});
 
