@@ -39,6 +39,11 @@ class BillInstancesRepository {
           _db.billInstances.month.equals(month))
       ..orderBy([
         OrderingTerm.asc(_db.billInstances.isPaid),
+        // The paid section reads as a ledger, so it runs newest-settled first.
+        // Unpaid rows all carry a null paidAt and tie here, falling through to
+        // the due day; a paid row without one (pre-payment-details data) sorts
+        // last, since SQLite ranks NULL below every value.
+        OrderingTerm.desc(_db.billInstances.paidAt),
         OrderingTerm.asc(_db.bills.dueDayOfMonth),
       ]);
 

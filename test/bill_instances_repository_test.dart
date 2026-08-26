@@ -234,4 +234,32 @@ void main() {
       expect(await instancesRepo.getInstanceIdsForBill(billId), isEmpty);
     });
   });
+
+  group('watchInstancesForMonth', () {
+    test('unpaid by due day first, then paid newest-settled first', () async {
+      final rentId = await createBill('Rent', dueDay: 1);
+      final waterId = await createBill('Water', dueDay: 5);
+      final powerId = await createBill('Power', dueDay: 20);
+      final phoneId = await createBill('Phone', dueDay: 25);
+
+      final water = await instanceFor(waterId, 2026, 6);
+      final phone = await instanceFor(phoneId, 2026, 6);
+      // Settled out of due-day order: the phone bill, due last, was paid first.
+      await instancesRepo.markPaid(
+        instanceId: phone.id,
+        paidAt: DateTime(2026, 6, 3),
+      );
+      await instancesRepo.markPaid(
+        instanceId: water.id,
+        paidAt: DateTime(2026, 6, 6),
+      );
+
+      final rows = await instancesRepo.watchInstancesForMonth(2026, 6).first;
+
+      expect(
+        rows.map((r) => r.bill.id),
+        [rentId, powerId, waterId, phoneId],
+      );
+    });
+  });
 }
