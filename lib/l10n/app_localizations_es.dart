@@ -384,10 +384,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get faqQHowReminders => '¿Cómo funcionan los recordatorios?';
   @override
   String get faqAHowReminders =>
-      'Los recordatorios se entregan a Android por adelantado como alarmas '
-      'exactas, así que el sistema los muestra por sí solo — sin internet y '
-      'sin trabajo en segundo plano. Cada factura pendiente te recuerda un '
-      'día antes, el día del vencimiento y durante los tres días siguientes; '
+      'Los recordatorios se entregan al teléfono por adelantado, así que el '
+      'sistema los muestra por sí solo — sin internet y sin trabajo en '
+      'segundo plano. Cada factura pendiente te recuerda un día antes, el '
+      'día del vencimiento y durante los tres días siguientes; '
       'una vez vencida, Rounds insiste a diario hasta que la marques como '
       'pagada. Marcarla como pagada detiene sus recordatorios de inmediato.';
   @override

@@ -395,11 +395,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faqQHowReminders => 'How do reminders work?';
   @override
   String get faqAHowReminders =>
-      'Reminders are handed to Android in advance as exact alarms, so the '
-      'system shows them on its own — no internet and no background work '
-      'needed. Each unpaid bill reminds you the day before, on the due day, '
-      'and for three days after; once overdue, Rounds nags daily until you '
-      'mark it paid. Marking a bill paid stops its reminders immediately.';
+      'Reminders are handed to your phone in advance, so the system shows '
+      'them on its own — no internet and no background work needed. Each '
+      'unpaid bill reminds you the day before, on the due day, and for three '
+      'days after; once overdue, Rounds nags daily until you mark it paid. '
+      'Marking a bill paid stops its reminders immediately.';
   @override
   String get faqQNoReminders => 'I\'m not getting reminders';
   @override
