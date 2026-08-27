@@ -138,14 +138,10 @@ class PaidBillRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final rounds = RoundsColors.of(context);
     final l10n = AppLocalizations.of(context);
-    final amount = entry.instance.amountPaid ?? entry.bill.amount;
     final paidAt = entry.instance.paidAt;
-    // Amount when known; otherwise the payment date keeps the row honest.
-    final trailing = amount != null
-        ? kAppCurrency.format(amount)
-        : paidAt != null
-            ? l10n.paidOnDate(paidAt)
-            : l10n.paid;
+    // When it was settled, not what it cost: the section is a record of what
+    // has been dealt with, and the amount is one tap away in the sheet.
+    final trailing = paidAt != null ? l10n.paidOnDate(paidAt) : l10n.paid;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
