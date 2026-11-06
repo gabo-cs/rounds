@@ -288,6 +288,26 @@ class BillInstancesRepository {
         .toList();
   }
 
+  /// Delete unpaid instances of archived bills from [year]/[month] on — the
+  /// same rows [BillsRepository.archiveBill] drops. Archiving used to leave
+  /// them behind, so installs from before that fix still carry them; running
+  /// this on every scheduling pass cleans those up and is a no-op otherwise.
+  Future<void> deleteUpcomingUnpaidOfArchived(int year, int month) {
+    return (_db.delete(_db.billInstances)
+          ..where(
+            (i) =>
+                i.isPaid.equals(false) &
+                i.billId.isInQuery(
+                  _db.selectOnly(_db.bills)
+                    ..addColumns([_db.bills.id])
+                    ..where(_db.bills.isArchived.equals(true)),
+                ) &
+                (i.year.isBiggerThanValue(year) |
+                    (i.year.equals(year) & i.month.isBiggerOrEqualValue(month))),
+          ))
+        .go();
+  }
+
   /// IDs of every instance belonging to [billId] — used to cancel their
   /// scheduled notifications when the bill is deleted or archived.
   Future<List<int>> getInstanceIdsForBill(int billId) async {

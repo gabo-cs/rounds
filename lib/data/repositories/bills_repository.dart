@@ -69,13 +69,31 @@ class BillsRepository {
     );
   }
 
-  Future<void> archiveBill(int id) {
-    return (_db.update(_db.bills)..where((b) => b.id.equals(id))).write(
-      BillsCompanion(
-        isArchived: const Value(true),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+  /// Archive [id] and drop its unpaid instances from the current month on.
+  ///
+  /// Instances are pre-generated a year ahead, so flipping the flag alone
+  /// would leave the bill sitting in every upcoming month. Paid rows and past
+  /// months are history and stay put; unarchiving regenerates the rest lazily.
+  Future<void> archiveBill(int id, {DateTime? now}) async {
+    final today = now ?? DateTime.now();
+    await _db.transaction(() async {
+      await (_db.update(_db.bills)..where((b) => b.id.equals(id))).write(
+        BillsCompanion(
+          isArchived: const Value(true),
+          updatedAt: Value(today),
+        ),
+      );
+      await (_db.delete(_db.billInstances)
+            ..where(
+              (i) =>
+                  i.billId.equals(id) &
+                  i.isPaid.equals(false) &
+                  (i.year.isBiggerThanValue(today.year) |
+                      (i.year.equals(today.year) &
+                          i.month.isBiggerOrEqualValue(today.month))),
+            ))
+          .go();
+    });
   }
 
   Future<void> unarchiveBill(int id) {

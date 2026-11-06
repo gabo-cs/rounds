@@ -136,6 +136,13 @@ Future<void> refreshReminderSchedule({
   final next = DateTime(today.year, today.month + 1);
   final prev = current.previousMonth;
 
+  // Their reminders were cancelled when the bill was archived; this only
+  // removes the rows so the months stop listing them.
+  await instancesRepo.deleteUpcomingUnpaidOfArchived(
+    current.year,
+    current.month,
+  );
+
   // Instances are generated lazily when a month is viewed, so the months the
   // horizon reaches into may not exist yet on a launch that never opens them.
   final activeBills = await billsRepo.watchAllActiveBills().first;
