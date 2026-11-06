@@ -148,7 +148,11 @@ class _RoundMenu extends ConsumerWidget {
       for (final entry in instances ?? const <BillInstanceWithBill>[])
         if (!entry.instance.isPaid) entry,
     ];
-    if (unpaid.isEmpty) return const SizedBox.shrink();
+    // Hold the slot rather than collapsing it, so the chevrons don't jump
+    // sideways when paging between a round with open bills and one without.
+    if (unpaid.isEmpty) {
+      return const SizedBox.square(dimension: kMinInteractiveDimension);
+    }
 
     return PopupMenuButton<void>(
       icon: const Icon(Icons.more_vert),
@@ -218,16 +222,23 @@ class _MonthSummary extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final instances =
         ref.watch(monthInstancesProvider(month)).valueOrNull;
+    final planned = ref.watch(plannedBillsProvider(month));
 
     // Collapse (instead of spinning) while loading or when the month is
-    // empty — the header stays calm and the list below tells the story.
+    // empty — the header stays calm and the list below tells the story. A
+    // month past the horizon isn't empty, just not open yet: it keeps the
+    // same lockup, so paging onto it from the last open round doesn't reflow.
     return AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       alignment: Alignment.topCenter,
-      child: (instances == null || instances.isEmpty)
-          ? const SizedBox(width: double.infinity)
-          : _SummaryContent(month: month, instances: instances),
+      child: switch (instances) {
+        final rows? when rows.isNotEmpty =>
+          _SummaryContent(month: month, instances: rows),
+        _? when planned.isNotEmpty =>
+          _PlannedSummary(month: month, billCount: planned.length),
+        _ => const SizedBox(width: double.infinity),
+      },
     );
   }
 }
@@ -327,6 +338,69 @@ class _SummaryContent extends ConsumerWidget {
                       color: rounds.textSecondary,
                     ),
                     children: detailSpans,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// [_SummaryContent]'s lockup for a round that isn't open yet: the same ring
+/// and lines, drawn hollow, counting what it will hold and how far off it is.
+class _PlannedSummary extends StatelessWidget {
+  const _PlannedSummary({required this.month, required this.billCount});
+
+  final SelectedMonth month;
+  final int billCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final rounds = RoundsColors.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+      child: Row(
+        children: [
+          RoundRing(
+            size: 68,
+            strokeWidth: 5,
+            animate: true,
+            segmentColors: List.filled(
+              billCount,
+              theme.colorScheme.outlineVariant,
+            ),
+            trackColor: theme.colorScheme.outlineVariant,
+            child: Text(
+              '0/$billCount',
+              style: AppTypography.money.copyWith(
+                fontSize: 12,
+                letterSpacing: 0,
+                color: rounds.textFaint,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.plannedBillsCount(billCount),
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.monthsAway(monthsFromNow(month)),
+                  style: AppTypography.monoMeta.copyWith(
+                    color: rounds.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

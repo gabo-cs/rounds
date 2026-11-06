@@ -57,6 +57,24 @@ final activeBillsProvider = StreamProvider<List<Bill>>((ref) {
 
 // --- Month instances ---
 
+/// How far ahead instances are generated: the current month plus this many.
+const kGenerationHorizonMonths = 12;
+
+/// Months from [now]'s month to [month]; negative for past months.
+int monthsFromNow(SelectedMonth month, {DateTime? now}) {
+  final today = now ?? DateTime.now();
+  return (month.year - today.year) * 12 + (month.month - today.month);
+}
+
+/// The bills a month beyond the generation horizon will hold once it opens,
+/// so it can preview them instead of claiming there are none. Empty for every
+/// month that has, or can have, rows of its own.
+final plannedBillsProvider = Provider.autoDispose
+    .family<List<Bill>, SelectedMonth>((ref, month) {
+      if (monthsFromNow(month) <= kGenerationHorizonMonths) return const [];
+      return ref.watch(activeBillsProvider).valueOrNull ?? const [];
+    });
+
 // A family keyed by month: each month page owns its own stream, so the
 // PageView can keep neighbouring months alive and pre-built. autoDispose frees
 // a month's query stream once its page leaves the PageView's cache window.
@@ -68,12 +86,8 @@ final monthInstancesProvider = StreamProvider.autoDispose
       // browsing ahead shows the recurring bills. This horizon is relative to today
       // (not a fixed date) so it keeps sliding forward and never expires. Past
       // months show only what was explicitly recorded.
-      final now = DateTime.now();
-      final selectedDate = DateTime(month.year, month.month);
-      final currentMonth = DateTime(now.year, now.month);
-      final cutoff = DateTime(now.year, now.month + 12);
-      final shouldGenerate =
-          !selectedDate.isBefore(currentMonth) && !selectedDate.isAfter(cutoff);
+      final ahead = monthsFromNow(month);
+      final shouldGenerate = ahead >= 0 && ahead <= kGenerationHorizonMonths;
 
       if (shouldGenerate) {
         // Reuse the shared active-bills stream rather than opening a fresh query

@@ -77,6 +77,14 @@ abstract class AppLocalizations {
   String get noRoundRecordedSubtitle;
   String get buildRoundButton;
 
+  /// A month beyond the generation horizon: its rows don't exist yet, but
+  /// the bills it will hold are known, so it previews them instead.
+  String get roundAheadTitle;
+  String get roundAheadSubtitle;
+  String get plannedSection;
+  String plannedBillsCount(int count);
+  String monthsAway(int count);
+
   /// Settling every open bill in a round at once. The round being the
   /// current one decides what date gets recorded, so the confirmation copy
   /// differs between the two.

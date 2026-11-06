@@ -77,6 +77,20 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get buildRoundButton => 'Armar esta ronda';
   @override
+  String get roundAheadTitle => 'Esta ronda abre más adelante';
+  @override
+  String get roundAheadSubtitle =>
+      'Las facturas se suman a una ronda cerca de un año antes de que empiece. '
+      'Por ahora no hay nada que hacer; esto es lo que traerá.';
+  @override
+  String get plannedSection => 'Previstas';
+  @override
+  String plannedBillsCount(int count) =>
+      count == 1 ? '1 factura prevista' : '$count facturas previstas';
+  @override
+  String monthsAway(int count) =>
+      count == 1 ? 'Falta 1 mes' : 'Faltan $count meses';
+  @override
   String get roundMenuTooltip => 'Opciones de la ronda';
   @override
   String get markAllPaidAction => 'Marcar todas como pagadas';

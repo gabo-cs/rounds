@@ -95,6 +95,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get buildRoundButton => 'Build this round';
   @override
+  String get roundAheadTitle => 'This round opens later';
+  @override
+  String get roundAheadSubtitle =>
+      'Bills join a round about a year before it starts. Nothing to do yet — '
+      'here\'s what this one will hold.';
+  @override
+  String get plannedSection => 'Planned';
+  @override
+  String plannedBillsCount(int count) =>
+      count == 1 ? '1 bill planned' : '$count bills planned';
+  @override
+  String monthsAway(int count) =>
+      count == 1 ? '1 month away' : '$count months away';
+  @override
   String get roundMenuTooltip => 'Round options';
   @override
   String get markAllPaidAction => 'Mark all as paid';

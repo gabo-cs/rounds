@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rounds/core/theme/app_theme.dart';
 import 'package:rounds/core/theme/rounds_colors.dart';
+import 'package:rounds/core/widgets/bill_icon.dart';
 import 'package:rounds/core/widgets/empty_state.dart';
+import 'package:rounds/data/database/app_database.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/round/providers/round_providers.dart';
 import 'package:rounds/features/round/widgets/bill_card.dart';
@@ -99,7 +101,11 @@ class _RoundScreenState extends ConsumerState<RoundScreen> {
 
 /// One month's bill list. Each page owns its [monthInstancesProvider] instance,
 /// so the PageView keeps neighbouring months alive and pre-built.
-/// An empty month means one of two things, and they need different offers.
+/// An empty month means one of three things, and they need different offers.
+///
+/// A month past the generation horizon has no rows *yet*: they arrive once it
+/// comes within a year. It previews the bills it will hold rather than saying
+/// there are none, and offers nothing — there is nothing to do there yet.
 ///
 /// Instances are only generated from the current month forward, so a past
 /// month is blank whenever the app went unopened through it — or whenever an
@@ -117,11 +123,10 @@ class _EmptyMonth extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final activeBills = ref.watch(activeBillsProvider).valueOrNull;
-    final now = DateTime.now();
-    final isPast = DateTime(
-      month.year,
-      month.month,
-    ).isBefore(DateTime(now.year, now.month));
+    final planned = ref.watch(plannedBillsProvider(month));
+    final isPast = monthsFromNow(month) < 0;
+
+    if (planned.isNotEmpty) return _UpcomingMonth(bills: planned);
 
     if (isPast && activeBills != null && activeBills.isNotEmpty) {
       return EmptyState(
@@ -149,6 +154,67 @@ class _EmptyMonth extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: Text(l10n.addFirstBill),
       ),
+    );
+  }
+}
+
+class _UpcomingMonth extends StatelessWidget {
+  const _UpcomingMonth({required this.bills});
+
+  final List<Bill> bills;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final rounds = RoundsColors.of(context);
+
+    return ListView(
+      // Same padding as an open round's list, so the page doesn't shift.
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+      children: [
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.upcoming_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.roundAheadTitle,
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.roundAheadSubtitle,
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: rounds.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SectionHeader(
+          title: l10n.plannedSection,
+          count: bills.length,
+          dotColor: theme.colorScheme.outlineVariant,
+        ),
+        ...bills.map((bill) => _PlannedBillRow(bill: bill)),
+      ],
     );
   }
 }
@@ -316,6 +382,52 @@ class _SectionHeader extends StatelessWidget {
             style: AppTypography.monoMeta.copyWith(color: rounds.textFaint),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A bill a not-yet-open round will hold. Quiet like [PaidBillRow] — there is
+/// nothing to settle yet — and a tap opens the bill itself, the one thing
+/// worth doing from here.
+class _PlannedBillRow extends StatelessWidget {
+  const _PlannedBillRow({required this.bill});
+
+  final Bill bill;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rounds = RoundsColors.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.push('/bills/${bill.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        child: Row(
+          children: [
+            BillIcon(name: bill.name, category: bill.category, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                bill.name,
+                style: theme.textTheme.bodyMedium!.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: rounds.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              l10n.dueThe(bill.dueDayOfMonth),
+              style: AppTypography.monoMeta.copyWith(color: rounds.textFaint),
+            ),
+          ],
+        ),
       ),
     );
   }
