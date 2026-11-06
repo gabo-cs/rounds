@@ -69,11 +69,12 @@ class BillsRepository {
     );
   }
 
-  /// Archive [id] and drop its unpaid instances from the current month on.
+  /// Archive [id] and drop its unpaid instances in the months after this one.
   ///
   /// Instances are pre-generated a year ahead, so flipping the flag alone
-  /// would leave the bill sitting in every upcoming month. Paid rows and past
-  /// months are history and stay put; unarchiving regenerates the rest lazily.
+  /// would leave the bill sitting in every upcoming month. The current month
+  /// stays — it may still be owed — and so do paid rows and past months;
+  /// unarchiving regenerates the rest lazily.
   Future<void> archiveBill(int id, {DateTime? now}) async {
     final today = now ?? DateTime.now();
     await _db.transaction(() async {
@@ -90,7 +91,7 @@ class BillsRepository {
                   i.isPaid.equals(false) &
                   (i.year.isBiggerThanValue(today.year) |
                       (i.year.equals(today.year) &
-                          i.month.isBiggerOrEqualValue(today.month))),
+                          i.month.isBiggerThanValue(today.month))),
             ))
           .go();
     });

@@ -288,24 +288,35 @@ class BillInstancesRepository {
         .toList();
   }
 
-  /// Delete unpaid instances of archived bills from [year]/[month] on — the
-  /// same rows [BillsRepository.archiveBill] drops. Archiving used to leave
-  /// them behind, so installs from before that fix still carry them; running
-  /// this on every scheduling pass cleans those up and is a no-op otherwise.
-  Future<void> deleteUpcomingUnpaidOfArchived(int year, int month) {
-    return (_db.delete(_db.billInstances)
-          ..where(
-            (i) =>
-                i.isPaid.equals(false) &
-                i.billId.isInQuery(
-                  _db.selectOnly(_db.bills)
-                    ..addColumns([_db.bills.id])
-                    ..where(_db.bills.isArchived.equals(true)),
-                ) &
-                (i.year.isBiggerThanValue(year) |
-                    (i.year.equals(year) & i.month.isBiggerOrEqualValue(month))),
-          ))
-        .go();
+  /// Delete unpaid instances of archived bills in the months after each was
+  /// archived — the same rows [BillsRepository.archiveBill] drops. Archiving
+  /// used to leave them behind, so installs from before that fix still carry
+  /// them; running this on every scheduling pass cleans those up and is a
+  /// no-op otherwise.
+  ///
+  /// There is no archivedAt column, so the bill's updatedAt stands in for it:
+  /// archiving stamps it, and a later edit only moves the cutoff forward,
+  /// which deletes less, never more.
+  Future<void> deleteUpcomingUnpaidOfArchived() async {
+    final archived = await (_db.select(_db.bills)
+          ..where((b) => b.isArchived.equals(true)))
+        .get();
+    if (archived.isEmpty) return;
+
+    await _db.batch((batch) {
+      for (final bill in archived) {
+        final archivedAt = bill.updatedAt;
+        batch.deleteWhere(
+          _db.billInstances,
+          (i) =>
+              i.billId.equals(bill.id) &
+              i.isPaid.equals(false) &
+              (i.year.isBiggerThanValue(archivedAt.year) |
+                  (i.year.equals(archivedAt.year) &
+                      i.month.isBiggerThanValue(archivedAt.month))),
+        );
+      }
+    });
   }
 
   /// IDs of every instance belonging to [billId] — used to cancel their

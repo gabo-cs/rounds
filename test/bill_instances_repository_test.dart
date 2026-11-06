@@ -217,12 +217,12 @@ void main() {
   });
 
   group('archiving', () {
-    test('drops unpaid rows from the archive month on, keeps history',
+    test('keeps the archive month and history, drops later unpaid rows',
         () async {
       final gymId = await createBill('Gym');
       final otherId = await createBill('Rent');
       final september = await instanceFor(gymId, 2026, 9);
-      await instanceFor(gymId, 2026, 10);
+      final october = await instanceFor(gymId, 2026, 10);
       final paidDecember = await instanceFor(gymId, 2026, 12);
       await instanceFor(gymId, 2026, 11);
       await instanceFor(gymId, 2027, 1);
@@ -238,25 +238,33 @@ void main() {
           .map((i) => i.id);
       expect(
         gymRows,
-        unorderedEquals([september.id, paidDecember.id]),
-        reason: 'past months and prepaid rows are recorded history',
+        unorderedEquals([september.id, october.id, paidDecember.id]),
+        reason: 'the archive month may still be owed; past months and '
+            'prepaid rows are recorded history',
       );
       final otherRows = (await instancesRepo.getAllInstances())
           .where((i) => i.billId == otherId);
       expect(otherRows, hasLength(5));
     });
 
-    test('sweep removes rows an older archive left behind', () async {
+    test('sweep removes rows left after the month a bill was archived',
+        () async {
       final gymId = await createBill('Gym');
       final rentId = await createBill('Rent');
       final october = await instanceFor(gymId, 2026, 10);
       await instanceFor(gymId, 2026, 11);
       await instanceFor(gymId, 2027, 1);
       // Archived the pre-fix way: flag only, rows untouched.
-      await (db.update(db.bills)..where((b) => b.id.equals(gymId)))
-          .write(const BillsCompanion(isArchived: Value(true)));
+      await (db.update(db.bills)..where((b) => b.id.equals(gymId))).write(
+        BillsCompanion(
+          isArchived: const Value(true),
+          updatedAt: Value(DateTime(2026, 10, 20)),
+        ),
+      );
 
-      await instancesRepo.deleteUpcomingUnpaidOfArchived(2026, 11);
+      await instancesRepo.deleteUpcomingUnpaidOfArchived();
+      // Idempotent: it runs on every scheduling pass.
+      await instancesRepo.deleteUpcomingUnpaidOfArchived();
 
       final all = await instancesRepo.getAllInstances();
       expect(
@@ -266,10 +274,23 @@ void main() {
       expect(all.where((i) => i.billId == rentId), hasLength(3));
     });
 
+    test('sweep spares the month of an archive made this month', () async {
+      final gymId = await createBill('Gym');
+      final thisMonth = await instanceFor(gymId, 2026, 11);
+      await billsRepo.archiveBill(gymId, now: DateTime(2026, 11, 5));
+
+      await instancesRepo.deleteUpcomingUnpaidOfArchived();
+
+      expect(
+        (await instancesRepo.getAllInstances()).map((i) => i.id),
+        [thisMonth.id],
+      );
+    });
+
     test('unarchiving lets the upcoming months regenerate', () async {
       final gymId = await createBill('Gym');
       await instanceFor(gymId, 2026, 11);
-      await billsRepo.archiveBill(gymId, now: DateTime(2026, 11, 5));
+      await billsRepo.archiveBill(gymId, now: DateTime(2026, 10, 20));
       await billsRepo.unarchiveBill(gymId);
 
       final november = await instanceFor(gymId, 2026, 11);
