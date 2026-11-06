@@ -97,7 +97,9 @@ Two tables, two concepts:
 
 - **`Bills`** — the recurring template: name, optional amount, `dueDayOfMonth` (1–28,
   capped at 28 *by design* to avoid short-month problems), optional category/notes,
-  `isArchived`. Archiving hides a bill from future months without touching history;
+  `isArchived`. Archiving hides a bill from future months without touching history
+  (`archiveBill` deletes the pre-generated unpaid rows *after* the current month;
+  the current month stays, since it may still be owed, and keeps its reminders);
   deleting removes the bill *and* all its instances (explicit transaction, since the
   FK is `onDelete: restrict`).
 - **`BillInstances`** — one row per bill per month: year, month, `isPaid`, payment
@@ -282,7 +284,10 @@ All logic in `core/utils/notification_service.dart` (singleton,
   - `kNotificationSchedulePacing` yields between individual calls so a pass can't
     monopolise the Android main thread, which is also what delivers touch input.
   - Reminders are armed from the due date forward so they fire even if the app is
-    never reopened. Paid and archived bills arm nothing.
+    never reopened. Paid bills arm nothing. Archived bills are *not* excluded:
+    archiving drops every upcoming month, so whatever unpaid instances remain
+    were owed when the bill was archived, and they nag (and are retired by
+    `getUnpaidInstancesBefore`) like any other.
 - **Reminder ladder** per unpaid instance, all at 9:00 local: −1d, due day,
   then **three one-shot overdue pings** (due+1 on slot 0, due+2/+3 on slots 4–5,
   `overdueLadder()`). Five notifications per bill, and that count is the budget
@@ -315,8 +320,8 @@ All logic in `core/utils/notification_service.dart` (singleton,
 - **Anything that retires a bill or instance must cancel its notifications**:
   mark-paid cancels the instance's IDs; deleting a bill cancels all its instances'
   IDs via `cancelForInstances` (grab them *before* the delete removes the rows);
-  archiving does the same. Undoing a payment on a past-due bill re-arms the daily
-  overdue reminder; unarchiving relies on the next scheduling pass. The re-arm
+  archiving cancels only the instances it drops (`archiveBill` returns their
+  IDs). Undoing a payment on a past-due bill re-arms the daily overdue reminder; unarchiving relies on the next scheduling pass. The re-arm
   pass is *not* a full backstop for these — it only clears slot 0 for a settled
   bill (the one alarm that repeats without end), so a lost cancel on an upcoming
   reminder still fires once. Keep the explicit cancels.
