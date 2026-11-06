@@ -223,8 +223,11 @@ ReminderPlan plannedRemindersFor(
   );
   final today = DateTime(now.year, now.month, now.day);
 
-  if (entry.instance.isPaid || entry.bill.isArchived) {
-    // Marking paid, archiving and deleting all cancel outright, so this is
+  // Archived bills are deliberately not excluded: archiving drops every
+  // upcoming month, so the unpaid instances an archived bill still has are
+  // ones that are owed, and they nag like any other.
+  if (entry.instance.isPaid) {
+    // Marking paid and deleting both cancel outright, so this is
     // only a backstop for a cancel that was lost. Clear the overdue slot and
     // nothing else: it holds the one alarm that repeats without end, and so is
     // the only one that could nag forever. The rest are one-shots that expire.

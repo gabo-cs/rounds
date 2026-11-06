@@ -70,30 +70,34 @@ class BillsRepository {
   }
 
   /// Archive [id] and drop its unpaid instances in the months after this one.
+  /// Returns the IDs of the dropped instances, whose reminders the caller
+  /// must cancel.
   ///
   /// Instances are pre-generated a year ahead, so flipping the flag alone
   /// would leave the bill sitting in every upcoming month. The current month
-  /// stays — it may still be owed — and so do paid rows and past months;
-  /// unarchiving regenerates the rest lazily.
-  Future<void> archiveBill(int id, {DateTime? now}) async {
+  /// stays — it may still be owed, and keeps its reminders until it is paid —
+  /// and so do paid rows and past months; unarchiving regenerates the rest
+  /// lazily.
+  Future<List<int>> archiveBill(int id, {DateTime? now}) {
     final today = now ?? DateTime.now();
-    await _db.transaction(() async {
+    return _db.transaction(() async {
       await (_db.update(_db.bills)..where((b) => b.id.equals(id))).write(
         BillsCompanion(
           isArchived: const Value(true),
           updatedAt: Value(today),
         ),
       );
-      await (_db.delete(_db.billInstances)
-            ..where(
-              (i) =>
-                  i.billId.equals(id) &
-                  i.isPaid.equals(false) &
-                  (i.year.isBiggerThanValue(today.year) |
-                      (i.year.equals(today.year) &
-                          i.month.isBiggerThanValue(today.month))),
-            ))
-          .go();
+      Expression<bool> upcomingUnpaid($BillInstancesTable i) =>
+          i.billId.equals(id) &
+          i.isPaid.equals(false) &
+          (i.year.isBiggerThanValue(today.year) |
+              (i.year.equals(today.year) &
+                  i.month.isBiggerThanValue(today.month)));
+      final dropped = await (_db.select(_db.billInstances)
+            ..where(upcomingUnpaid))
+          .get();
+      await (_db.delete(_db.billInstances)..where(upcomingUnpaid)).go();
+      return [for (final instance in dropped) instance.id];
     });
   }
 

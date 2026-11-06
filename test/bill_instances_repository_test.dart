@@ -205,14 +205,15 @@ void main() {
       expect(lingering, isEmpty);
     });
 
-    test('excludes instances of archived bills', () async {
+    test('includes instances of archived bills', () async {
+      // A month still owed at archive time nags, so it must be retired too.
       final billId = await createBill('Old Gym');
-      await instanceFor(billId, 2026, 6);
-      await billsRepo.archiveBill(billId);
+      final june = await instanceFor(billId, 2026, 6);
+      await billsRepo.archiveBill(billId, now: DateTime(2026, 6, 20));
 
       final lingering = await instancesRepo.getUnpaidInstancesBefore(2026, 7);
 
-      expect(lingering, isEmpty);
+      expect(lingering.map((e) => e.instance.id), [june.id]);
     });
   });
 
@@ -224,14 +225,21 @@ void main() {
       final september = await instanceFor(gymId, 2026, 9);
       final october = await instanceFor(gymId, 2026, 10);
       final paidDecember = await instanceFor(gymId, 2026, 12);
-      await instanceFor(gymId, 2026, 11);
-      await instanceFor(gymId, 2027, 1);
+      final november = await instanceFor(gymId, 2026, 11);
+      final january = await instanceFor(gymId, 2027, 1);
       await instancesRepo.markPaid(
         instanceId: paidDecember.id,
         paidAt: DateTime(2026, 10, 1),
       );
 
-      await billsRepo.archiveBill(gymId, now: DateTime(2026, 10, 20));
+      final dropped =
+          await billsRepo.archiveBill(gymId, now: DateTime(2026, 10, 20));
+
+      expect(
+        dropped,
+        unorderedEquals([november.id, january.id]),
+        reason: 'only these lose their reminders; October is still owed',
+      );
 
       final gymRows = (await instancesRepo.getAllInstances())
           .where((i) => i.billId == gymId)

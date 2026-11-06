@@ -169,12 +169,23 @@ void main() {
     });
   });
 
+  test('an archived bill that is still owed is reminded like any other', () {
+    // Archiving drops the upcoming months, so an unpaid instance an archived
+    // bill still has is one that was owed when it was archived.
+    final now = DateTime(2026, 7, 1, 8);
+    List<(int, DateTime)> armed(BillInstanceWithBill e) => [
+          for (final n in planFor(e, now).arm) (n.id, n.fireAt),
+        ];
+
+    expect(armed(entry(isArchived: true)), armed(entry()));
+    expect(armed(entry()), isNotEmpty);
+  });
+
   group('a bill that should have no reminders', () {
-    test('arms nothing when paid or archived', () {
+    test('arms nothing when paid', () {
       final now = DateTime(2026, 7, 1, 8);
 
       expect(planFor(entry(isPaid: true), now).arm, isEmpty);
-      expect(planFor(entry(isArchived: true), now).arm, isEmpty);
     });
 
     test('clears the overdue repeat if the due date has passed', () {
@@ -183,7 +194,6 @@ void main() {
       final now = DateTime(2026, 7, 20, 12);
 
       expect(planFor(entry(isPaid: true), now).clear, [10]);
-      expect(planFor(entry(isArchived: true), now).clear, [10]);
     });
 
     test('clears nothing when the due date is still ahead', () {

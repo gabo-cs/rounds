@@ -179,14 +179,11 @@ class _BillFormScreenState extends ConsumerState<BillFormScreen> {
   }
 
   Future<void> _archiveBillAndClose(Bill bill) async {
-    // A retired bill shouldn't keep nagging — cancel its scheduled
-    // reminders. (Unarchiving re-arms them on the next scheduling pass.) The
-    // IDs are read first because archiving deletes the upcoming instances.
-    final instanceIds = await ref
-        .read(billInstancesRepositoryProvider)
-        .getInstanceIdsForBill(bill.id);
-    await ref.read(billsRepositoryProvider).archiveBill(bill.id);
-    await NotificationService.instance.cancelForInstances(instanceIds);
+    // Only the dropped upcoming months lose their reminders: a month that is
+    // still owed keeps nagging until it is paid, like any other bill.
+    final droppedIds =
+        await ref.read(billsRepositoryProvider).archiveBill(bill.id);
+    await NotificationService.instance.cancelForInstances(droppedIds);
     if (mounted) context.pop();
   }
 

@@ -258,9 +258,10 @@ class BillInstancesRepository {
         .toList();
   }
 
-  /// Unpaid instances from months strictly before [year]/[month], for bills
-  /// that are still active. Used to *retire* reminders older than the nagging
-  /// horizon, so ancient unpaid instances don't nag forever.
+  /// Unpaid instances from months strictly before [year]/[month]. Used to
+  /// *retire* reminders older than the nagging horizon, so ancient unpaid
+  /// instances don't nag forever. Archived bills are included: a month still
+  /// owed when its bill was archived keeps nagging, and has to be retired too.
   Future<List<BillInstanceWithBill>> getUnpaidInstancesBefore(
     int year,
     int month,
@@ -272,7 +273,6 @@ class BillInstancesRepository {
       ),
     ])
       ..where(_db.billInstances.isPaid.equals(false) &
-          _db.bills.isArchived.equals(false) &
           (_db.billInstances.year.isSmallerThanValue(year) |
               (_db.billInstances.year.equals(year) &
                   _db.billInstances.month.isSmallerThanValue(month))));
