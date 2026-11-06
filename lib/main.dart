@@ -69,10 +69,10 @@ void main() async {
   // the UI isolate) and cold-start snooze recovery. Deferred past the first
   // frame plus a settle so the app is interactive from the moment it appears.
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    Future.delayed(
-      const Duration(seconds: 2),
-      () => _initNotifications(container, prefs),
-    );
+    Future.delayed(const Duration(seconds: 2), () async {
+      await _sweepArchivedLeftovers(container);
+      await _initNotifications(container, prefs);
+    });
   });
 
   _lifecycleListener = AppLifecycleListener(
@@ -82,6 +82,21 @@ void main() async {
       minInterval: _kReminderPassMinInterval,
     ),
   );
+}
+
+/// Drop the upcoming months an archive from before that cleanup existed left
+/// behind. A data fix, so it runs on every launch rather than with the
+/// reminder pass, which the notifications toggle and the hide debounce can
+/// both hold off indefinitely. One query on the drift isolate; a no-op once
+/// clean.
+Future<void> _sweepArchivedLeftovers(ProviderContainer container) async {
+  try {
+    await container
+        .read(billInstancesRepositoryProvider)
+        .deleteUpcomingUnpaidOfArchived();
+  } catch (e, st) {
+    debugPrint('Archived-leftover sweep failed: $e\n$st');
+  }
 }
 
 Future<void> _initNotifications(

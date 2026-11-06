@@ -204,11 +204,13 @@ Every line ordering there is deliberate and commented:
 3. `container.read(activeBillsProvider)` warms the drift isolate before first frame.
 4. Only the notification work that can't wait — plugin/timezone init and
    `handleLaunchSnooze()` — happens after the first frame **+ 2s settle**,
-   wrapped in try/catch. Initializing the timezone DB is hundreds of ms of
-   parsing on the UI isolate, and every platform call behind it is serviced by
-   the Android main thread, which is also what delivers touch events. Keep any
-   new startup work behind that same deferral, and off the pre-`runApp` path
-   entirely.
+   wrapped in try/catch. Just before it, in the same deferral, the
+   archived-leftover sweep (`deleteUpcomingUnpaidOfArchived`) runs — a data fix,
+   so it is deliberately not gated on the notifications toggle like the pass.
+   Initializing the timezone DB is hundreds of ms of parsing on the UI isolate,
+   and every platform call behind it is serviced by the Android main thread,
+   which is also what delivers touch events. Keep any new startup work behind
+   that same deferral, and off the pre-`runApp` path entirely.
 5. The **re-arm pass runs when the app is hidden**, not at launch: its 30–60
    platform calls all land on that same Android main thread, and running them
    seconds after launch made early scrolling stutter. Backgrounding always

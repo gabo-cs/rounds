@@ -150,9 +150,9 @@ Future<void> refreshReminderSchedule({
   final next = DateTime(today.year, today.month + 1);
   final prev = current.previousMonth;
 
-  // Before the candidates are read, so leftover months of an archived bill
-  // are gone rather than armed. Their reminders were cancelled at archive
-  // time; this only removes the rows so the months stop listing them.
+  // Launch already sweeps these (see main.dart); repeated here because a pass
+  // can follow an import without a relaunch, and the leftover months of an
+  // archived bill must be gone before the candidates are read, not armed.
   await instancesRepo.deleteUpcomingUnpaidOfArchived();
 
   // Instances are generated lazily when a month is viewed, so the months the
