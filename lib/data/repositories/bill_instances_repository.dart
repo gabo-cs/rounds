@@ -209,6 +209,36 @@ class BillInstancesRepository {
     });
   }
 
+  /// Undo a [markManyPaid], given the dates it recorded.
+  ///
+  /// Guarded on the recorded date as well as isPaid, so only what that settle
+  /// wrote is reverted: a bill opened and settled again with other details in
+  /// the meantime keeps them.
+  Future<void> unmarkManyPaid(Map<int, DateTime> paidAtByInstanceId) async {
+    if (paidAtByInstanceId.isEmpty) return;
+
+    final now = DateTime.now();
+    await _db.batch((batch) {
+      for (final entry in paidAtByInstanceId.entries) {
+        batch.update(
+          _db.billInstances,
+          BillInstancesCompanion(
+            isPaid: const Value(false),
+            paidAt: const Value(null),
+            paymentMethod: const Value(null),
+            referenceNote: const Value(null),
+            amountPaid: const Value(null),
+            updatedAt: Value(now),
+          ),
+          where: (i) =>
+              i.id.equals(entry.key) &
+              i.isPaid.equals(true) &
+              i.paidAt.equals(entry.value),
+        );
+      }
+    });
+  }
+
   Future<void> unmarkPaid(int instanceId) {
     return (_db.update(_db.billInstances)
           ..where((i) => i.id.equals(instanceId)))

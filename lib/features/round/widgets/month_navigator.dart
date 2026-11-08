@@ -197,15 +197,34 @@ class _RoundMenu extends ConsumerWidget {
     );
     if (confirmed != ConfirmDialogResult.confirmed) return;
 
-    final settled = await ref
-        .read(markMonthPaidProvider(month).notifier)
-        .settle(unpaid);
+    // Held directly: the undo can be tapped after this menu, or the whole
+    // month page, is gone, and a ref can't be used from there.
+    final notifier = ref.read(markMonthPaidProvider(month).notifier);
+    final settled = await notifier.settle(unpaid);
+    if (settled == null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.genericErrorMessage)),
+      );
+      return;
+    }
+    // Undo lives here rather than as a standing "mark all unpaid" item: the
+    // case worth covering is a mistaken or test settle, noticed on the spot.
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          settled == null
-              ? l10n.genericErrorMessage
-              : l10n.markAllPaidDone(settled),
+        content: Text(l10n.markAllPaidDone(settled.count)),
+        // An action makes a SnackBar persist by default; this one is a
+        // moment's safety net and shouldn't sit over the round until swiped.
+        persist: false,
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: l10n.undo,
+          onPressed: () async {
+            if (!await notifier.unsettle(settled)) {
+              messenger.showSnackBar(
+                SnackBar(content: Text(l10n.genericErrorMessage)),
+              );
+            }
+          },
         ),
       ),
     );

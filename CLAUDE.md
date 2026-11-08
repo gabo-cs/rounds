@@ -171,9 +171,10 @@ Patterns in use:
   them; migrate them when touched.
 - **Services are accessed through providers in new code.** `NotificationService`
   is a singleton reached via `NotificationService.instance` today, which is why
-  its callers can't be unit-tested. New code takes it from a
-  `notificationServiceProvider` (create it wrapping the singleton on first need)
-  so tests can override it; any new service gets a provider from day one.
+  its callers can't be unit-tested. New code takes it from
+  `notificationServiceProvider` (`lib/data/providers.dart`, wrapping the
+  singleton; `MarkMonthPaidNotifier` is the first user) so tests can override
+  it; any new service gets a provider from day one.
 - **Screen-private providers are fine** for single-screen queries
   (`_allBillsProvider` in `bills_screen.dart`).
 - Settings: `SettingsNotifier(StateNotifier<AppSettings>)` over SharedPreferences;
