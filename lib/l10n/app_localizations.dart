@@ -85,13 +85,13 @@ abstract class AppLocalizations {
   String plannedBillsCount(int count);
   String monthsAway(int count);
 
-  /// Settling every open bill in a round at once. The round being the
-  /// current one decides what date gets recorded, so the confirmation copy
+  /// Settling every open bill in a round at once. A past round records each
+  /// bill's due date and any other records today, so the confirmation copy
   /// differs between the two.
   String get roundMenuTooltip;
   String get markAllPaidAction;
   String get markAllPaidDialogTitle;
-  String markAllPaidCurrentMessage(int count);
+  String markAllPaidTodayMessage(int count);
   String markAllPaidPastMessage(int count);
   String get markAllPaidConfirm;
   String markAllPaidDone(int count);

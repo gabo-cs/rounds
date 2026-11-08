@@ -115,7 +115,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get markAllPaidDialogTitle => 'Mark the round as paid?';
   @override
-  String markAllPaidCurrentMessage(int count) => count == 1
+  String markAllPaidTodayMessage(int count) => count == 1
       ? 'The bill still open in this round will be recorded as paid today. '
             'You can open it afterwards to add the amount or the method.'
       : 'All $count bills still open in this round will be recorded as paid '

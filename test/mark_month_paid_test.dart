@@ -66,6 +66,20 @@ void main() {
       expect(paidAt, DateTime(2025, 8, 10));
     });
 
+    test('records today when paying a future round ahead', () {
+      // Its due date hasn't come yet; recording it would date the payment in
+      // the future.
+      final now = DateTime(2026, 11, 7, 9);
+
+      expect(bulkPaidAt(entry(year: 2026, month: 12, dueDay: 10), now), now);
+    });
+
+    test('a January round settled in December is ahead, not past', () {
+      final now = DateTime(2026, 12, 30);
+
+      expect(bulkPaidAt(entry(year: 2027, month: 1, dueDay: 5), now), now);
+    });
+
     test('records today for a bill not yet due this month', () {
       // Settling the current round early is a real payday gesture, and the
       // payment happened today whatever the due day says.

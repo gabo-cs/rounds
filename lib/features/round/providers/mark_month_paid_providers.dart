@@ -6,17 +6,25 @@ import 'package:rounds/core/utils/notification_service.dart';
 import 'package:rounds/data/repositories/bill_instances_repository.dart';
 import 'package:rounds/features/round/providers/round_providers.dart';
 
+/// Whether [month] is a round already behind [now] — the one case where a
+/// bulk settle records something other than today.
+bool isPastRound(SelectedMonth month, DateTime now) =>
+    monthsFromNow(month, now: now) < 0;
+
 /// The date a bulk settle records for one instance.
 ///
-/// Today, when the round being settled is the one we're living in — that's
-/// when the payment is actually happening. Otherwise the bill's own due date
-/// in its own month: a June bill settled in August was not paid in August,
-/// and dating it so would put the payment outside the round it belongs to.
+/// For a round already past, the bill's own due date in its own month: a June
+/// bill settled in August was not paid in August, and dating it so would put
+/// the payment outside the round it belongs to. Otherwise today — for the
+/// current round that's when the payment is happening, and settling a future
+/// round is paying ahead, which also happens today. Its due date would record
+/// a payment on a day that hasn't come yet.
 ///
 /// Pure so the month-boundary cases can be tested without a clock.
 DateTime bulkPaidAt(BillInstanceWithBill entry, DateTime now) {
   final instance = entry.instance;
-  if (instance.year == now.year && instance.month == now.month) return now;
+  final round = SelectedMonth(year: instance.year, month: instance.month);
+  if (!isPastRound(round, now)) return now;
   // Due days are capped at 28, so this is always a real date.
   return DateTime(instance.year, instance.month, entry.bill.dueDayOfMonth);
 }

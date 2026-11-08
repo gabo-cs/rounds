@@ -175,8 +175,8 @@ class _RoundMenu extends ConsumerWidget {
     );
   }
 
-  /// What gets recorded differs between a round already past and the one
-  /// we're living in, so the confirmation says which it will be.
+  /// What gets recorded differs between a round already past and any other
+  /// (see [bulkPaidAt]), so the confirmation says which it will be.
   Future<void> _markAllPaid(
     BuildContext context,
     WidgetRef ref,
@@ -184,16 +184,15 @@ class _RoundMenu extends ConsumerWidget {
   ) async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final now = DateTime.now();
-    final isCurrentRound = month.year == now.year && month.month == now.month;
+    final isPast = isPastRound(month, DateTime.now());
 
     final confirmed = await showConfirmDialog(
       context,
       icon: Icons.done_all,
       title: l10n.markAllPaidDialogTitle,
-      message: isCurrentRound
-          ? l10n.markAllPaidCurrentMessage(unpaid.length)
-          : l10n.markAllPaidPastMessage(unpaid.length),
+      message: isPast
+          ? l10n.markAllPaidPastMessage(unpaid.length)
+          : l10n.markAllPaidTodayMessage(unpaid.length),
       confirmLabel: l10n.markAllPaidConfirm,
     );
     if (confirmed != ConfirmDialogResult.confirmed) return;

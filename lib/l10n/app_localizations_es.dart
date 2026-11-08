@@ -97,7 +97,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get markAllPaidDialogTitle => '¿Marcar la ronda como pagada?';
   @override
-  String markAllPaidCurrentMessage(int count) => count == 1
+  String markAllPaidTodayMessage(int count) => count == 1
       ? 'La factura que sigue abierta en esta ronda quedará registrada como '
             'pagada hoy. Después puedes abrirla para agregar el monto o el '
             'método.'
