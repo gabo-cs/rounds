@@ -61,7 +61,7 @@ class MarkMonthPaidNotifier extends StateNotifier<bool> {
     unawaited(
       NotificationService.instance
           .cancelForInstances([for (final entry in unpaid) entry.instance.id])
-          .catchError((Object e) => debugPrint('Cancel after settle: \$e')),
+          .catchError((Object e) => debugPrint('Cancel after settle: $e')),
     );
     return unpaid.length;
   }
