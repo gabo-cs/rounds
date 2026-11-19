@@ -16,8 +16,12 @@ jobs:
       # unversioned name, which only the -dev package provides.
       - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
 
+      # Pinned to the version used locally: a floating stable channel let a
+      # new release's deprecations fail analyze on unchanged code. Move it
+      # forward deliberately, together with the local toolchain.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.47.9
           channel: stable
           cache: true
 
